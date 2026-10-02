@@ -5,9 +5,12 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { apiGet } from '../lib/api.js'
 import DataTable from '../components/DataTable.jsx'
 import EstadoBadge from '../components/EstadoBadge.jsx'
+import MenuExportar from '../components/MenuExportar.jsx'
 import { IconBuscar, IconMas } from '../components/Icons.jsx'
-import { ESTADOS, TIPOS_REPARACION, etiquetaTipo, etiquetaTipoCorta, etiquetaEstado, formatearEuros, formatearFecha } from '../lib/ordenes.js'
+import { ESTADOS, TIPOS_REPARACION, etiquetaTipoCorta, formatearEuros, formatearFecha } from '../lib/ordenes.js'
 import { exportarExcel, fechaFichero } from '../lib/exportarExcel.js'
+import { exportarCsv } from '../lib/exportarCsv.js'
+import { columnasExportacionOrdenes } from '../lib/columnasOrdenes.js'
 
 // Una fecha prevista está vencida si ya ha pasado y la orden sigue abierta.
 function fechaPrevistaVencida(orden) {
@@ -109,33 +112,51 @@ export default function Ordenes() {
     },
   ]
 
-  // Exporta a Excel las órdenes que coinciden con la búsqueda y los filtros
-  // actuales. No incluye datos internos (forma/estado de pago, observaciones).
-  async function alExportar() {
+  // Exporta a Excel el listado de órdenes que coincide con la búsqueda y los
+  // filtros actuales. No incluye datos internos (forma/estado de pago, etc.).
+  async function alExportarExcel() {
     setErrorExport('')
     setExportando(true)
     try {
-      await exportarExcel(`ordenes-${fechaFichero()}.xlsx`, [
-        {
-          nombre: 'Órdenes',
-          columnas: [
-            { titulo: 'Nº orden', valor: (o) => o.numeroOrden ?? '', ancho: 14 },
-            { titulo: 'Fecha entrada', valor: (o) => (o.fechaEntrada ? new Date(o.fechaEntrada) : ''), ancho: 14 },
-            { titulo: 'Fecha prevista', valor: (o) => (o.fechaPrevista ? new Date(o.fechaPrevista) : ''), ancho: 14 },
-            { titulo: 'Estado', valor: (o) => etiquetaEstado(o.estado), ancho: 18 },
-            { titulo: 'Tipo', valor: (o) => etiquetaTipo(o.tipoReparacion), ancho: 26 },
-            { titulo: 'Garantía', valor: (o) => (o.garantia ? 'Sí' : 'No'), ancho: 10 },
-            { titulo: 'Nº cliente', valor: (o) => o.cliente?.numeroCliente ?? '', ancho: 11 },
-            { titulo: 'Cliente', valor: (o) => [o.cliente?.nombre, o.cliente?.apellidos].filter(Boolean).join(' '), ancho: 26 },
-            { titulo: 'Teléfono', valor: (o) => o.cliente?.telefono ?? '', ancho: 16 },
-            { titulo: 'Bici', valor: (o) => (o.bicicleta ? [o.bicicleta.marca, o.bicicleta.modelo].filter(Boolean).join(' ') : ''), ancho: 22 },
-            { titulo: 'Nº serie', valor: (o) => o.bicicleta?.numeroSerie ?? '', ancho: 18 },
-            { titulo: 'Mecánico', valor: (o) => o.mecanico?.nombre ?? '', ancho: 20 },
-            { titulo: 'Total', valor: (o) => (Number.isFinite(Number(o.total)) ? Number(o.total) : 0), ancho: 12 },
-          ],
-          filas: ordenes,
+      const columnas = columnasExportacionOrdenes.map((columna) => ({
+        titulo: columna.titulo,
+        ancho: columna.ancho,
+        valor: (fila) => {
+          const valor = columna.valor(fila)
+          return columna.tipo === 'fecha' && valor ? new Date(valor) : valor
         },
+      }))
+      await exportarExcel(`ordenes-${fechaFichero()}.xlsx`, [
+        { nombre: 'Órdenes', columnas, filas: ordenes },
       ])
+    } catch (e) {
+      setErrorExport(e.message)
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  // Exporta a CSV (para abrir en Excel) el listado de órdenes filtrado.
+  function alExportarCsv() {
+    setErrorExport('')
+    setExportando(true)
+    try {
+      exportarCsv(`ordenes-${fechaFichero()}.csv`, columnasExportacionOrdenes, ordenes)
+    } catch (e) {
+      setErrorExport(e.message)
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  // Exporta a PDF (A4 horizontal) el listado de órdenes filtrado.
+  async function alExportarPdf() {
+    setErrorExport('')
+    setExportando(true)
+    try {
+      const { generarPdfListadoOrdenes } = await import('../lib/pdfListadoOrdenes.js')
+      const doc = await generarPdfListadoOrdenes(ordenes)
+      doc.save(`ordenes-${fechaFichero()}.pdf`)
     } catch (e) {
       setErrorExport(e.message)
     } finally {
@@ -148,7 +169,15 @@ export default function Ordenes() {
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-sm text-azul-300">Taller</p><h1 className="mt-1 text-3xl font-bold">Órdenes de reparación</h1><p className="mt-2 text-slate-400">Consulta y sigue las órdenes del taller.</p></div>
         <div className="flex flex-wrap gap-3">
-          <button onClick={alExportar} disabled={exportando || isLoading} className="btn-secondary">{exportando ? 'Exportando…' : 'Exportar Excel'}</button>
+          <MenuExportar
+            exportando={exportando}
+            deshabilitado={isLoading}
+            opciones={[
+              { clave: 'excel', etiqueta: 'Excel', onSeleccionar: alExportarExcel },
+              { clave: 'csv', etiqueta: 'CSV', onSeleccionar: alExportarCsv },
+              { clave: 'pdf', etiqueta: 'PDF', onSeleccionar: alExportarPdf },
+            ]}
+          />
           <button onClick={() => navigate('/ordenes/nueva')} className="btn-primary"><IconMas size={18} /> Nueva orden</button>
         </div>
       </div>
