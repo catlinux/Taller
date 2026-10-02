@@ -55,3 +55,4 @@ Son bases independientes, cada una con sus usuarios y sus copias de seguridad (`
 - **Actualizaciones:** la aplicación (PWA) busca versiones nuevas cada 5 minutos y se recarga sola; no hace falta vaciar la caché.
 - **Tests:** `npm test` en `taller-bicicletas` (lector CSV y cálculos de precios).
 - Al arrancar, el servidor avisa si `admin` o `mecanico` conservan la contraseña de ejemplo.
+- **Sin buscadores:** la aplicación es privada y no debe aparecer en Google. Lo evitan `robots.txt` (`Disallow: /`), la etiqueta `<meta name="robots" content="noindex…">` y la cabecera `X-Robots-Tag` (la envía la app y el VirtualHost de Apache). Para reforzarlo, protege también el subdominio con la contraseña de la propia app o con restricción de IP si lo prefieres.

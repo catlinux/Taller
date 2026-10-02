@@ -5,6 +5,8 @@
 // porque el acceso real es por HTTPS a través del proxy Apache.
 export function cabecerasSeguridad(req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
+  // Aplicación privada: que ningún buscador la indexe ni la guarde en caché.
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex')
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('Referrer-Policy', 'same-origin')
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
