@@ -44,8 +44,18 @@ app.use('/api/modo', modoRoutes)
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../dist')))
+  // El navegador debe revalidar siempre la página y el service worker para
+  // enterarse de las versiones nuevas; los ficheros con hash (assets/) se
+  // pueden cachear para siempre.
+  const sinCache = (res) => res.setHeader('Cache-Control', 'no-cache')
+  app.use(express.static(join(__dirname, '../dist'), {
+    setHeaders: (res, ruta) => {
+      if (/[\\/]assets[\\/]/.test(ruta)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      else sinCache(res)
+    },
+  }))
   app.get('*', (req, res) => {
+    sinCache(res)
     res.sendFile(join(__dirname, '../dist/index.html'))
   })
 }

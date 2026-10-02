@@ -6,6 +6,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { AjustesProvider } from './context/AjustesContext.jsx'
 import { BloqueoProvider } from './context/BloqueoContext.jsx'
+import { registerSW } from 'virtual:pwa-register'
 import { aplicarModo, leerModo } from './lib/modoColor.js'
 import '@fontsource-variable/inter'
 import './index.css'
@@ -32,6 +33,26 @@ function aplicarTemaGuardado() {
 }
 
 aplicarTemaGuardado()
+
+// Actualización automática: busca una versión nueva al abrir y cada 5 minutos, y
+// recarga la página cuando el nuevo service worker toma el control. Así no hace
+// falta vaciar la caché a mano (Ctrl+Shift+R) tras un despliegue.
+if ('serviceWorker' in navigator) {
+  const habiaControlador = Boolean(navigator.serviceWorker.controller)
+  let recargando = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // La primera instalación también cambia de controlador: solo se recarga si ya había uno.
+    if (!habiaControlador || recargando) return
+    recargando = true
+    window.location.reload()
+  })
+  registerSW({
+    immediate: true,
+    onRegisteredSW(_url, registro) {
+      if (registro) setInterval(() => registro.update().catch(() => {}), 5 * 60 * 1000)
+    },
+  })
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
