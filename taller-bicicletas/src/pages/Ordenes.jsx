@@ -5,9 +5,11 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { apiGet } from '../lib/api.js'
 import DataTable from '../components/DataTable.jsx'
 import EstadoBadge from '../components/EstadoBadge.jsx'
+import PagoBadge from '../components/PagoBadge.jsx'
 import MenuExportar from '../components/MenuExportar.jsx'
 import { IconBuscar, IconMas } from '../components/Icons.jsx'
 import { ESTADOS, TIPOS_REPARACION, etiquetaTipoCorta, formatearEuros, formatearFecha } from '../lib/ordenes.js'
+import { FORMAS_PAGO } from '../lib/pagos.js'
 import { exportarExcel, fechaFichero } from '../lib/exportarExcel.js'
 import { exportarCsv } from '../lib/exportarCsv.js'
 import { columnasExportacionOrdenes } from '../lib/columnasOrdenes.js'
@@ -32,6 +34,7 @@ export default function Ordenes() {
   const [estado, setEstado] = useState('')
   const [tipoReparacion, setTipoReparacion] = useState('')
   const [mecanicoId, setMecanicoId] = useState('')
+  const [formaPago, setFormaPago] = useState('')
   const [exportando, setExportando] = useState(false)
   const [errorExport, setErrorExport] = useState('')
 
@@ -46,10 +49,11 @@ export default function Ordenes() {
   if (estado) params.set('estado', estado)
   if (tipoReparacion) params.set('tipoReparacion', tipoReparacion)
   if (mecanicoId) params.set('mecanicoId', mecanicoId)
+  if (formaPago) params.set('formaPago', formaPago)
   const queryString = params.toString()
 
   const { data: ordenes = [], isLoading, error } = useQuery(
-    ['ordenes', busqueda, estado, tipoReparacion, mecanicoId],
+    ['ordenes', busqueda, estado, tipoReparacion, mecanicoId, formaPago],
     () => apiGet(`/api/ordenes${queryString ? `?${queryString}` : ''}`, token),
     { enabled: Boolean(token), keepPreviousData: true },
   )
@@ -101,6 +105,11 @@ export default function Ordenes() {
       render: (o) => <EstadoBadge estado={o.estado} />,
     },
     {
+      clave: 'formaPago', titulo: 'Pago', ancho: '120px',
+      valor: (o) => o.formaPago || '',
+      render: (o) => (o.formaPago ? <PagoBadge formaPago={o.formaPago} /> : <span className="text-slate-500">—</span>),
+    },
+    {
       clave: 'fechaPrevista', titulo: 'Prevista', ancho: '110px', tipo: 'fecha',
       valor: (o) => o.fechaPrevista,
       render: (o) => <span className={`block truncate ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
@@ -113,7 +122,7 @@ export default function Ordenes() {
   ]
 
   // Exporta a Excel el listado de órdenes que coincide con la búsqueda y los
-  // filtros actuales. No incluye datos internos (forma/estado de pago, etc.).
+  // filtros actuales.
   async function alExportarExcel() {
     setErrorExport('')
     setExportando(true)
@@ -210,6 +219,13 @@ export default function Ordenes() {
               {mecanicos.map((mecanico) => <option key={mecanico.id} value={mecanico.id}>{mecanico.nombre}</option>)}
             </select>
           </label>
+          <label className="text-sm text-slate-300">
+            <span className="sr-only">Forma de pago</span>
+            <select value={formaPago} onChange={(event) => setFormaPago(event.target.value)} className={selectClass}>
+              <option value="">Todas las formas de pago</option>
+              {FORMAS_PAGO.map((opcion) => <option key={opcion.valor} value={opcion.valor}>{opcion.etiqueta}</option>)}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -224,7 +240,7 @@ export default function Ordenes() {
         onFila={(o) => navigate(`/ordenes/${o.id}`)}
         cargando={isLoading}
         etiquetaPlural="órdenes"
-        claveReinicio={`${busqueda}|${estado}|${tipoReparacion}|${mecanicoId}`}
+        claveReinicio={`${busqueda}|${estado}|${tipoReparacion}|${mecanicoId}|${formaPago}`}
         vacio="No hay órdenes que coincidan con la búsqueda o los filtros."
       />
     </div>

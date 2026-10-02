@@ -159,8 +159,8 @@ model OrdenReparacion {
   problema          String?   // Indicaciones del cliente sobre lo que le pasa a la bicicleta
   garantia          Boolean   @default(false) // Si la reparación está en garantía
   tipoReparacion    String?   // Preferente, Programada, Urgente, NoProgramada
-  formaPago         String?   // Efectivo, Tarjeta, Transferencia, Financiado (interno, no se imprime)
-  estadoPago        String?   // Pagado, Pendiente, Parcial (interno, no se imprime)
+  formaPago         String?   // Pendiente, Parcial, Efectivo, Tarjeta, Bizum, Transferencia (interno, no se imprime)
+  estadoPago        String?   // OBSOLETO: su valor se unificó en formaPago; no usar (columna conservada por compatibilidad)
   mecanicoId        Int?      // Mecánico asignado
   seguimiento       String?   // Seguimiento interno: cliente avisado, falta un dato o una pieza...
   clienteAvisado    Boolean   @default(false) // Casilla rápida: cliente avisado

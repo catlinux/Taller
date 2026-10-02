@@ -19,6 +19,7 @@ import modoRoutes from './routes/modo.js'
 import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
+import { migrarPagos } from './lib/pagos.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -94,6 +95,11 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n🚲 Servidor del taller corriendo en http://localhost:${PORT}`)
   console.log(`📊 API disponible en http://localhost:${PORT}/api`)
+})
+
+// Unifica las antiguas formas/estados de pago en el campo formaPago (idempotente).
+migrarPagos(prisma).catch((error) => {
+  console.error('Error al migrar las formas de pago:', error)
 })
 
 // Copia de seguridad automática: una al arrancar y luego cada 24 horas.

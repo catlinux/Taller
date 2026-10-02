@@ -2,6 +2,7 @@ import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
+import { FORMAS_PAGO } from '../lib/pagos.js'
 
 const router = Router()
 
@@ -20,12 +21,6 @@ export const ESTADOS_ORDEN = [
 
 // Tipos de reparación permitidos para una orden
 const TIPOS_REPARACION = ['Preferente', 'Programada', 'Urgente', 'NoProgramada']
-
-// Formas de pago permitidas para una orden
-const FORMAS_PAGO = ['Efectivo', 'Tarjeta', 'Transferencia', 'Financiado']
-
-// Estados de pago permitidos para una orden
-const ESTADOS_PAGO = ['Pagado', 'Pendiente', 'Parcial']
 
 // Campos de texto opcionales que acepta el modelo OrdenReparacion
 const CAMPOS_TEXTO_OPCIONALES = ['problema', 'descripcion', 'diagnostico', 'recomendaciones', 'observaciones', 'seguimiento']
@@ -252,17 +247,13 @@ function construirDatosOrden(body, { parcial = false } = {}) {
     } else {
       datos.formaPago = body.formaPago
     }
+  } else if (!parcial) {
+    // Una orden nueva se crea siempre con una forma de pago: Pendiente por defecto.
+    datos.formaPago = 'Pendiente'
   }
 
-  if (body.estadoPago !== undefined) {
-    if (body.estadoPago === null || body.estadoPago === '') {
-      datos.estadoPago = null
-    } else if (typeof body.estadoPago !== 'string' || !ESTADOS_PAGO.includes(body.estadoPago)) {
-      return { error: `Estado de pago no válido. Valores permitidos: ${ESTADOS_PAGO.join(', ')}` }
-    } else {
-      datos.estadoPago = body.estadoPago
-    }
-  }
+  // El antiguo campo estadoPago se ignora si llega en el cuerpo: su valor se
+  // unificó en formaPago y ya no se valida ni se guarda.
 
   return { datos }
 }
@@ -416,7 +407,7 @@ async function validarMecanico(mecanicoId) {
 }
 
 // GET / -> lista de órdenes (opcionalmente filtradas por ?clienteId=, ?estado=,
-// ?mecanicoId=, ?tipoReparacion= y búsqueda ?q=)
+// ?mecanicoId=, ?tipoReparacion=, ?formaPago= y búsqueda ?q=)
 router.get('/', async (req, res, next) => {
   try {
     const where = {}
@@ -445,6 +436,12 @@ router.get('/', async (req, res, next) => {
         return res.status(400).json({ error: `El filtro tipoReparacion no es válido. Valores permitidos: ${TIPOS_REPARACION.join(', ')}` })
       }
       where.tipoReparacion = req.query.tipoReparacion
+    }
+    if (req.query.formaPago !== undefined) {
+      if (typeof req.query.formaPago !== 'string' || !FORMAS_PAGO.includes(req.query.formaPago)) {
+        return res.status(400).json({ error: `El filtro formaPago no es válido. Valores permitidos: ${FORMAS_PAGO.join(', ')}` })
+      }
+      where.formaPago = req.query.formaPago
     }
     if (req.query.q !== undefined) {
       const q = String(req.query.q).trim()
@@ -914,6 +911,8 @@ router.post('/:id/duplicar', async (req, res, next) => {
           problema: original.problema,
           garantia: original.garantia,
           tipoReparacion: original.tipoReparacion,
+          // La copia es una orden nueva (en Presupuesto): empieza sin cobrar.
+          formaPago: 'Pendiente',
           mecanicoId: original.mecanicoId,
           descuentoGlobal: original.descuentoGlobal,
           ...totales,

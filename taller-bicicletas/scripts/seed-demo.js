@@ -207,8 +207,9 @@ async function main() {
         problema: elegir(problemas),
         descripcion: cerrada ? 'Trabajos realizados según el presupuesto.' : null,
         tipoReparacion: elegir(['Preferente', 'Programada', 'Urgente', 'NoProgramada']),
-        formaPago: estados[i] === 'Entregada' ? elegir(['Efectivo', 'Tarjeta']) : null,
-        estadoPago: estados[i] === 'Entregada' ? 'Pagado' : 'Pendiente',
+        formaPago: estados[i] === 'Entregada'
+          ? elegir(['Efectivo', 'Tarjeta', 'Bizum', 'Transferencia'])
+          : (estados[i] === 'Finalizada' ? elegir(['Pendiente', 'Parcial']) : 'Pendiente'),
         mecanicoId: mecanicos[i % 2].id,
         ...totales,
         materiales: { create: materiales },

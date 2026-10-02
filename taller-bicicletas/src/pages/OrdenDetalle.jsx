@@ -4,7 +4,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useAjustes } from '../context/AjustesContext.jsx'
 import { apiGet, apiPost, apiPut } from '../lib/api.js'
-import { ESTADOS, TIPOS_REPARACION, FORMAS_PAGO, ESTADOS_PAGO } from '../lib/ordenes.js'
+import { ESTADOS, TIPOS_REPARACION } from '../lib/ordenes.js'
+import { FORMAS_PAGO } from '../lib/pagos.js'
 import ClienteSelector from '../components/orden/ClienteSelector.jsx'
 import BicicletaSelector from '../components/orden/BicicletaSelector.jsx'
 import TablaMateriales from '../components/orden/TablaMateriales.jsx'
@@ -56,8 +57,7 @@ function estadoInicialForm() {
     descripcion: '',
     diagnostico: '',
     recomendaciones: '',
-    formaPago: '',
-    estadoPago: '',
+    formaPago: 'Pendiente',
     observaciones: '',
     clienteAvisado: false,
     seguimiento: '',
@@ -156,7 +156,6 @@ export default function OrdenDetalle() {
       diagnostico: orden.diagnostico ?? '',
       recomendaciones: orden.recomendaciones ?? '',
       formaPago: orden.formaPago ?? '',
-      estadoPago: orden.estadoPago ?? '',
       observaciones: orden.observaciones ?? '',
       clienteAvisado: Boolean(orden.clienteAvisado),
       seguimiento: orden.seguimiento ?? '',
@@ -221,7 +220,6 @@ export default function OrdenDetalle() {
       diagnostico: form.diagnostico,
       recomendaciones: form.recomendaciones,
       formaPago: form.formaPago || null,
-      estadoPago: form.estadoPago || null,
       observaciones: form.observaciones,
       clienteAvisado: form.clienteAvisado,
       seguimiento: form.seguimiento,
@@ -415,20 +413,12 @@ export default function OrdenDetalle() {
 
         <div className="grid gap-6 lg:col-span-full lg:grid-cols-2">
           <Tarjeta titulo="Datos internos" descripcion="No se imprimen ni los ve el cliente." interno>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm text-slate-300">Forma de pago
-                <select value={form.formaPago} onChange={(event) => actualizar('formaPago', event.target.value)} className={inputClass}>
-                  <option value="">Sin especificar</option>
-                  {FORMAS_PAGO.map((forma) => <option key={forma} value={forma}>{forma}</option>)}
-                </select>
-              </label>
-              <label className="block text-sm text-slate-300">Estado de pago
-                <select value={form.estadoPago} onChange={(event) => actualizar('estadoPago', event.target.value)} className={inputClass}>
-                  <option value="">Sin especificar</option>
-                  {ESTADOS_PAGO.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
-                </select>
-              </label>
-            </div>
+            <label className="block text-sm text-slate-300">Forma de pago
+              <select value={form.formaPago} onChange={(event) => actualizar('formaPago', event.target.value)} className={inputClass}>
+                {form.formaPago === '' && <option value="" disabled>Sin indicar</option>}
+                {FORMAS_PAGO.map((forma) => <option key={forma.valor} value={forma.valor}>{forma.etiqueta}</option>)}
+              </select>
+            </label>
             <label className="mt-4 block text-sm text-slate-300">Observaciones internas
               <textarea rows={3} value={form.observaciones} onChange={(event) => actualizar('observaciones', event.target.value)} className={inputClass} />
             </label>

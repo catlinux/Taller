@@ -15,6 +15,7 @@ export const columnasExportacionOrdenes = [
   { clave: 'fechaEntrada', titulo: 'Fecha entrada', ancho: 14, tipo: 'fecha', valor: (o) => o.fechaEntrada ?? '' },
   { clave: 'fechaPrevista', titulo: 'Fecha prevista', ancho: 14, tipo: 'fecha', valor: (o) => o.fechaPrevista ?? '' },
   { clave: 'estado', titulo: 'Estado', ancho: 18, tipo: 'texto', valor: (o) => etiquetaEstado(o.estado) },
+  { clave: 'formaPago', titulo: 'Pago', ancho: 14, tipo: 'texto', valor: (o) => o.formaPago ?? '' },
   { clave: 'tipoReparacion', titulo: 'Tipo', ancho: 26, tipo: 'texto', valor: (o) => etiquetaTipo(o.tipoReparacion) },
   { clave: 'garantia', titulo: 'Garantía', ancho: 10, tipo: 'texto', valor: (o) => (o.garantia ? 'Sí' : 'No') },
   { clave: 'numeroCliente', titulo: 'Nº cliente', ancho: 11, tipo: 'texto', valor: (o) => o.cliente?.numeroCliente ?? '' },

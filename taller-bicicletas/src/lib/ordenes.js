@@ -20,12 +20,6 @@ export const TIPOS_REPARACION = [
   { valor: 'NoProgramada', etiqueta: 'No programada' },
 ]
 
-// Formas de pago permitidas en una orden.
-export const FORMAS_PAGO = ['Efectivo', 'Tarjeta', 'Transferencia', 'Financiado']
-
-// Estados de pago permitidos en una orden.
-export const ESTADOS_PAGO = ['Pagado', 'Pendiente', 'Parcial']
-
 // Devuelve la información (valor, etiqueta y clase) de un estado de orden.
 export function estadoInfo(valor) {
   return ESTADOS.find((estado) => estado.valor === valor) || { valor, etiqueta: valor || '—', clase: 'bg-slate-500/10 text-slate-300' }
