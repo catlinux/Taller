@@ -39,3 +39,19 @@ bash deploy/install.sh --demo      # sin --demo para una base vacía
 Requisitos: Node 20+, Apache 2.4. Actualizar: `git pull && bash deploy/install.sh && systemctl restart taller`.
 
 La base de datos es `taller-bicicletas/prisma/dev.db` y las copias de seguridad se guardan en `data/backups`; ninguna se versiona.
+
+## Datos reales y datos de prueba
+
+En **Configuración › Datos** (solo administradores) se elige con qué base trabaja la aplicación:
+
+- **Datos reales:** `taller-bicicletas/prisma/dev.db`.
+- **Datos de prueba:** `taller-bicicletas/prisma/demo.db`, con datos inventados. Se crea sola la primera vez que se elige (o con `npm run db:demo`).
+
+Son bases independientes, cada una con sus usuarios y sus copias de seguridad (`data/backups` y `data/backups-demo`). Al cambiar se cierra la sesión. Mientras se usa la de prueba aparece el aviso «MODO PRUEBA». Ninguna base se sube a git.
+
+## Más cosas útiles
+
+- **Modo claro/oscuro:** botón sol/luna en la cabecera (se recuerda en cada navegador).
+- **Actualizaciones:** la aplicación (PWA) busca versiones nuevas cada 5 minutos y se recarga sola; no hace falta vaciar la caché.
+- **Tests:** `npm test` en `taller-bicicletas` (lector CSV y cálculos de precios).
+- Al arrancar, el servidor avisa si `admin` o `mecanico` conservan la contraseña de ejemplo.

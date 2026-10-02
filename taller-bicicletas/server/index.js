@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import bcrypt from 'bcryptjs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
@@ -15,6 +16,7 @@ import mecanicosRoutes from './routes/mecanicos.js'
 import operacionesRoutes from './routes/operaciones.js'
 import ajustesRoutes from './routes/ajustes.js'
 import modoRoutes from './routes/modo.js'
+import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -83,3 +85,15 @@ const programarBackupAutomatico = () => {
 }
 programarBackupAutomatico()
 setInterval(programarBackupAutomatico, INTERVALO_BACKUP_MS).unref()
+
+// Aviso al arrancar si algún usuario conserva la contraseña de ejemplo del seed.
+const CONTRASENAS_EJEMPLO = { admin: 'admin123', mecanico: 'mecanico123' }
+async function avisarContrasenasPorDefecto() {
+  for (const [username, password] of Object.entries(CONTRASENAS_EJEMPLO)) {
+    const usuario = await prisma.usuario.findUnique({ where: { username } })
+    if (usuario && (await bcrypt.compare(password, usuario.password))) {
+      console.warn(`⚠️  El usuario "${username}" sigue con la contraseña de ejemplo: cámbiala en Configuración › Usuarios.`)
+    }
+  }
+}
+avisarContrasenasPorDefecto().catch(() => {})
