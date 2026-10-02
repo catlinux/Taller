@@ -6,7 +6,7 @@
 export const ESTADOS = [
   { valor: 'Presupuesto', etiqueta: 'Presupuesto', clase: 'bg-slate-500/10 text-slate-300' },
   { valor: 'Pendiente', etiqueta: 'Pendiente', clase: 'bg-azul-500/10 text-azul-300' },
-  { valor: 'EnReparacion', etiqueta: 'En reparación', clase: 'bg-azul-500 text-white' },
+  { valor: 'EnReparacion', etiqueta: 'En reparación', clase: 'bg-azul-500 text-white mantener-blanco' },
   { valor: 'EsperandoMaterial', etiqueta: 'Esperando material', clase: 'bg-naranja-500/10 text-naranja-300' },
   { valor: 'Finalizada', etiqueta: 'Finalizada', clase: 'bg-emerald-500/10 text-emerald-300' },
   { valor: 'Entregada', etiqueta: 'Entregada', clase: 'bg-slate-600/20 text-slate-400' },

@@ -6,6 +6,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { AjustesProvider } from './context/AjustesContext.jsx'
 import { BloqueoProvider } from './context/BloqueoContext.jsx'
+import { aplicarModo, leerModo } from './lib/modoColor.js'
 import '@fontsource-variable/inter'
 import './index.css'
 
@@ -16,6 +17,7 @@ const queryClient = new QueryClient({
 // Aplica el último tema guardado antes de montar React para evitar el parpadeo
 // del color al recargar. Los ajustes del servidor lo confirmarán después.
 function aplicarTemaGuardado() {
+  aplicarModo(leerModo())
   try {
     const guardado = localStorage.getItem('taller_tema')
     if (!guardado) return

@@ -51,7 +51,7 @@ export default function OperacionForm({ operacion, onSubmit, onCancel, isSaving 
         <input name="activo" type="checkbox" defaultChecked={operacion ? operacion.activo : true} className="h-4 w-4 rounded border-antracita-600 bg-antracita-900 text-azul-500 focus:ring-azul-400" />
         Operación activa
       </label>
-      <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={onCancel} className="rounded-lg border border-antracita-600 px-4 py-2 text-sm text-slate-300 hover:bg-antracita-700">Cancelar</button><button disabled={isSaving} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white hover:bg-azul-600 disabled:opacity-50">{isSaving ? 'Guardando…' : operacion ? 'Guardar cambios' : 'Crear operación'}</button></div>
+      <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={onCancel} className="rounded-lg border border-antracita-600 px-4 py-2 text-sm text-slate-300 hover:bg-antracita-700">Cancelar</button><button disabled={isSaving} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600 disabled:opacity-50">{isSaving ? 'Guardando…' : operacion ? 'Guardar cambios' : 'Crear operación'}</button></div>
     </form>
   )
 }

@@ -10,12 +10,12 @@ export default {
       colors: {
         // Paleta principal - Gris antracita con detalles en azul y naranja
         antracita: {
-          950: '#0F1215',  // Fondo más profundo
-          900: '#14171B',  // Fondo principal
-          800: '#1B1F24',  // Fondo tarjetas / sidebar
-          700: '#262B32',  // Bordes
-          600: '#363D46',  // Bordes hover
-          500: '#6B7482',  // Texto suave
+          950: 'rgb(var(--ant-950) / <alpha-value>)',  // Fondo más profundo
+          900: 'rgb(var(--ant-900) / <alpha-value>)',  // Fondo principal
+          800: 'rgb(var(--ant-800) / <alpha-value>)',  // Fondo tarjetas / sidebar
+          700: 'rgb(var(--ant-700) / <alpha-value>)',  // Bordes
+          600: 'rgb(var(--ant-600) / <alpha-value>)',  // Bordes hover
+          500: 'rgb(var(--ant-500) / <alpha-value>)',  // Texto suave
         },
         // Acento del tema: canales RGB en variables CSS para poder cambiar la
         // paleta (data-acento) y que sigan funcionando las opacidades (p. ej. /10).
@@ -40,7 +40,7 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {
-        suave: '0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px -12px rgba(0,0,0,0.6)',
+        suave: 'var(--sombra-suave)',
         'brillo-azul': '0 0 0 1px rgb(var(--acento-500) / 0.35), 0 8px 24px -8px rgb(var(--acento-500) / 0.35)',
         'glow-blue': '0 0 20px rgba(59, 130, 246, 0.15)',
         'glow-orange': '0 0 20px rgba(249, 115, 22, 0.15)',

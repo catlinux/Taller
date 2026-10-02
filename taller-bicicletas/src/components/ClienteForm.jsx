@@ -35,7 +35,7 @@ export default function ClienteForm({ cliente, onSubmit, onCancel, isSaving }) {
       </div>
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onCancel} className="rounded-lg border border-antracita-600 px-4 py-2 text-sm text-slate-300 hover:bg-antracita-700">Cancelar</button>
-        <button disabled={isSaving} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white hover:bg-azul-600 disabled:opacity-50">
+        <button disabled={isSaving} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600 disabled:opacity-50">
           {isSaving ? 'Guardando…' : cliente ? 'Guardar cambios' : 'Crear cliente'}
         </button>
       </div>

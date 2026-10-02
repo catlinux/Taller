@@ -104,7 +104,7 @@ export default function Empresa({ embebido = false }) {
             </div>
             {esAdmin && (
               <div className="flex justify-end pt-2">
-                <button disabled={guardando} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white hover:bg-azul-600 disabled:opacity-50">{guardando ? 'Guardando…' : 'Guardar datos'}</button>
+                <button disabled={guardando} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600 disabled:opacity-50">{guardando ? 'Guardando…' : 'Guardar datos'}</button>
               </div>
             )}
           </form>

@@ -1,4 +1,4 @@
-import { IconCheck } from '../Icons.jsx'
+import { IconCheck, IconLuna, IconSol } from '../Icons.jsx'
 import { reproducirIntro } from '../IntroBienvenida.jsx'
 import {
   AvisoSoloAdmin,
@@ -8,6 +8,7 @@ import {
   usePanelAjustes,
   usePrevisualizacionTema,
 } from './comunes.jsx'
+import { useModoColor } from '../../lib/modoColor.js'
 
 const CLAVES = ['colorAcento', 'densidad', 'radioEsquinas', 'introActivada']
 
@@ -33,6 +34,12 @@ const ESQUINAS = [
   { valor: 'recto', etiqueta: 'Rectas', radio: '3px' },
 ]
 
+// Modos de color de la interfaz (se recuerdan en el navegador del usuario).
+const MODOS = [
+  { valor: 'oscuro', etiqueta: 'Oscuro', Icono: IconLuna },
+  { valor: 'claro', etiqueta: 'Claro', Icono: IconSol },
+]
+
 export default function AparienciaPanel() {
   const { base, borrador, actualizar, descartar, guardar, hayCambios, estado, mensaje, esAdmin, guardando } =
     usePanelAjustes(CLAVES)
@@ -40,10 +47,33 @@ export default function AparienciaPanel() {
   // Aplica el tema en vivo mientras se previsualiza y lo restaura al salir.
   usePrevisualizacionTema(borrador, base)
 
+  // Modo de color (oscuro/claro): se aplica y se guarda al instante.
+  const [modo, , cambiarModo] = useModoColor()
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-white">Apariencia</h2>
       <p className="mt-1 text-sm text-slate-400">Personaliza el aspecto de la aplicación. Los cambios se ven al momento.</p>
+
+      <section className="mt-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Modo de color</h3>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+          {MODOS.map((opcionModo) => {
+            const activa = modo === opcionModo.valor
+            const Icono = opcionModo.Icono
+            return (
+              <TarjetaOpcion
+                key={opcionModo.valor}
+                activa={activa}
+                onClick={() => cambiarModo(opcionModo.valor)}
+                etiqueta={opcionModo.etiqueta}
+              >
+                <Icono size={26} className={activa ? 'text-white' : 'text-slate-300'} />
+              </TarjetaOpcion>
+            )
+          })}
+        </div>
+      </section>
 
       {!esAdmin && <div className="mt-5"><AvisoSoloAdmin /></div>}
 
@@ -64,7 +94,7 @@ export default function AparienciaPanel() {
                 className={`flex h-12 w-12 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${activa ? 'ring-2 ring-white ring-offset-2 ring-offset-antracita-800' : 'hover:scale-105'}`}
                 style={{ backgroundColor: acento.color }}
               >
-                {activa && <IconCheck size={20} className="text-white" />}
+                {activa && <IconCheck size={20} className="text-white mantener-blanco" />}
               </button>
             )
           })}

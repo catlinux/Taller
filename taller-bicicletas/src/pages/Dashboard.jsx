@@ -77,7 +77,7 @@ function TarjetaOrden({ orden, onAbrir }) {
       <p className="mt-1.5 truncate text-sm font-medium text-slate-200">{cliente}</p>
       <p className="truncate text-xs text-slate-500">{bici}</p>
       <div className="mt-2 flex items-center gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-azul-400 to-azul-600 text-[10px] font-semibold text-white">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-azul-400 to-azul-600 text-[10px] font-semibold text-white mantener-blanco">
           {iniciales(orden.mecanico?.nombre) || '—'}
         </span>
         <span className="truncate text-xs text-slate-400">{mecanico}</span>

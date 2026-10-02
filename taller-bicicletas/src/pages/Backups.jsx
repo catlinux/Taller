@@ -117,7 +117,7 @@ export default function Backups({ embebido = false }) {
             <p className="mt-2 text-slate-400">Se hace una copia automática al arrancar el servidor y cada 24 horas; se conservan las 14 últimas.</p>
           </div>
         )}
-        <button disabled={crear.isLoading} onClick={() => crear.mutate()} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-azul-600 disabled:opacity-50">{crear.isLoading ? 'Creando…' : 'Crear copia ahora'}</button>
+        <button disabled={crear.isLoading} onClick={() => crear.mutate()} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600 disabled:opacity-50">{crear.isLoading ? 'Creando…' : 'Crear copia ahora'}</button>
       </div>
 
       {aviso && <p role="status" className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{aviso}</p>}

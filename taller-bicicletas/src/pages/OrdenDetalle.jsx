@@ -464,7 +464,7 @@ export default function OrdenDetalle() {
                 </button>
               </>
             )}
-            <button type="button" onClick={alGuardar} disabled={guardar.isLoading} className="rounded-lg bg-azul-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-azul-600 disabled:opacity-50">
+            <button type="button" onClick={alGuardar} disabled={guardar.isLoading} className="rounded-lg bg-azul-500 px-5 py-2.5 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600 disabled:opacity-50">
               {guardar.isLoading ? 'Guardando…' : 'Guardar'}
             </button>
           </div>

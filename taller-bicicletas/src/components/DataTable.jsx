@@ -332,7 +332,7 @@ export default function DataTable({
                 aria-label={`Página ${elemento}`}
                 aria-current={elemento === paginaActual ? 'page' : undefined}
                 onClick={() => setPagina(elemento)}
-                className={`flex h-10 min-w-[40px] items-center justify-center rounded-md border px-2 ${elemento === paginaActual ? 'border-azul-500 bg-azul-500 font-semibold text-white' : 'border-antracita-600 hover:bg-antracita-700'}`}
+                className={`flex h-10 min-w-[40px] items-center justify-center rounded-md border px-2 ${elemento === paginaActual ? 'border-azul-500 bg-azul-500 font-semibold text-white mantener-blanco' : 'border-antracita-600 hover:bg-antracita-700'}`}
               >
                 {elemento}
               </button>

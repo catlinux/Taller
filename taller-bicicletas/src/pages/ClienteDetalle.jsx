@@ -118,7 +118,7 @@ export default function ClienteDetalle() {
       <section className="rounded-2xl border border-antracita-700 bg-antracita-800 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-white">Historial de reparaciones</h2>
-          <button type="button" onClick={() => navigate(`/ordenes/nueva?clienteId=${cliente.id}`)} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-azul-600">Nueva orden</button>
+          <button type="button" onClick={() => navigate(`/ordenes/nueva?clienteId=${cliente.id}`)} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600">Nueva orden</button>
         </div>
         <HistorialReparaciones ordenes={ordenes} />
       </section>

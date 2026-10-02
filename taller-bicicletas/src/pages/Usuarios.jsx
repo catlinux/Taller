@@ -95,7 +95,7 @@ function UsuarioModal({ usuario, onSubmit, onClose, isSaving }) {
           )}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="rounded-lg border border-antracita-600 px-4 py-2 text-sm text-slate-300 hover:bg-antracita-700">Cancelar</button>
-            <button disabled={isSaving} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white hover:bg-azul-600 disabled:opacity-50">{isSaving ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear usuario'}</button>
+            <button disabled={isSaving} className="rounded-lg bg-azul-500 px-4 py-2 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600 disabled:opacity-50">{isSaving ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear usuario'}</button>
           </div>
         </form>
       </section>
@@ -191,7 +191,7 @@ export default function Usuarios({ embebido = false }) {
     <div className="mx-auto max-w-7xl">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {!embebido && <div><p className="text-sm text-azul-300">Administración</p><h1 className="mt-1 text-3xl font-bold">Usuarios</h1><p className="mt-2 text-slate-400">Gestiona los usuarios del taller, sus roles y su acceso.</p></div>}
-        <button onClick={abrirCrear} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-azul-600">+ Nuevo usuario</button>
+        <button onClick={abrirCrear} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600">+ Nuevo usuario</button>
       </div>
 
       {errorAccion && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}

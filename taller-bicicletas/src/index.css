@@ -28,6 +28,21 @@
   --radio-control: 8px;
 }
 
+/* Superficies antracita: canales RGB en variables, igual que el acento, para
+   que funcionen las opacidades (p. ej. bg-antracita-800/60). En :root se usan
+   los valores del modo oscuro; el modo claro los invierte más abajo. */
+:root {
+  --ant-950: 15 18 21;    /* #0F1215 */
+  --ant-900: 20 23 27;    /* #14171B */
+  --ant-800: 27 31 36;    /* #1B1F24 */
+  --ant-700: 38 43 50;    /* #262B32 */
+  --ant-600: 54 61 70;    /* #363D46 */
+  --ant-500: 107 116 130; /* #6B7482 */
+
+  /* Sombra suave de las superficies; más ligera en modo claro. */
+  --sombra-suave: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+}
+
 /* Paletas de acento alternativas (atributo data-acento en <html>). */
 html[data-acento='naranja'] {
   --acento-300: 255 192 138;
@@ -65,6 +80,52 @@ html[data-densidad='compacta'] {
   --gap-seccion: 14px;
 }
 
+/* ==================== Modo claro (tema claro/oscuro) ==================== */
+/* Se activa con data-modo='claro' en <html>. Invierte la escala de superficies
+   y remapea los textos pensados para fondo oscuro a tonos oscuros legibles. */
+html[data-modo='claro'] {
+  color-scheme: light;
+  --ant-950: 243 245 248;  /* Fondo de página */
+  --ant-900: 236 239 243;  /* Fondos de inputs y zonas */
+  --ant-800: 255 255 255;  /* Tarjetas / sidebar */
+  --ant-700: 214 220 228;  /* Bordes */
+  --ant-600: 191 199 210;  /* Bordes hover */
+  --ant-500: 107 116 130;  /* Texto suave */
+  --sombra-suave: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 8px 24px -12px rgba(20, 23, 27, 0.14);
+}
+
+/* La especificidad (html + atributo + clase) supera a las utilidades de Tailwind. */
+html[data-modo='claro'] .text-white { color: #14171B; }
+html[data-modo='claro'] .text-slate-100 { color: #1B1F24; }
+html[data-modo='claro'] .text-slate-200 { color: #262B32; }
+html[data-modo='claro'] .text-slate-300 { color: #3A424C; }
+html[data-modo='claro'] .text-slate-400 { color: #5A6472; }
+html[data-modo='claro'] .text-slate-500 { color: #6B7482; }
+html[data-modo='claro'] .text-slate-600 { color: #8A93A0; }
+
+/* Variantes hover equivalentes. */
+html[data-modo='claro'] .hover\:text-white:hover { color: #14171B; }
+html[data-modo='claro'] .group:hover .group-hover\:text-slate-300 { color: #3A424C; }
+
+/* Colores de estado/acento: variantes más oscuras para contraste sobre claro. */
+html[data-modo='claro'] .text-azul-300,
+html[data-modo='claro'] .text-azul-400 { color: rgb(var(--acento-600)); }
+html[data-modo='claro'] .text-naranja-300,
+html[data-modo='claro'] .text-naranja-400 { color: #B45309; }
+html[data-modo='claro'] .text-emerald-300,
+html[data-modo='claro'] .text-ok { color: #047857; }
+html[data-modo='claro'] .text-rose-300,
+html[data-modo='claro'] .text-rose-400 { color: #BE123C; }
+html[data-modo='claro'] .text-amber-300 { color: #B45309; }
+html[data-modo='claro'] .text-peligro { color: #DC2626; }
+
+/* Excepción: el texto que va sobre fondos de color fuertes sigue siendo blanco. */
+html[data-modo='claro'] .text-white.mantener-blanco { color: #FFFFFF; }
+
+/* Los botones con fondo de acento fuerte (gradiente) mantienen el texto blanco,
+   aunque su color provenga de un @apply text-white. */
+html[data-modo='claro'] .btn-primary { color: #FFFFFF; }
+
 /* Radio de las esquinas (atributo data-radio en <html>). */
 html[data-radio='redondeado'] {
   --radio-card: 24px;
@@ -86,7 +147,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background-color: #0F1215;
+  background-color: rgb(var(--ant-950));
   background-image: radial-gradient(circle at 0% 0%, rgb(var(--acento-500) / 0.06), transparent 45%);
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -100,7 +161,7 @@ button, input {
 /* Scrollbars finas y oscuras, acordes con el tema */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #363D46 transparent;
+  scrollbar-color: rgb(var(--ant-600)) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -113,14 +174,14 @@ button, input {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #363D46;
+  background-color: rgb(var(--ant-600));
   border: 2px solid transparent;
   background-clip: padding-box;
   border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #4A5157;
+  background-color: rgb(var(--ant-500));
 }
 
 @layer base {

@@ -6,6 +6,7 @@ import { useBloqueo } from '../context/BloqueoContext.jsx'
 import IntroBienvenida, { EVENTO_REPRODUCIR_INTRO, introActivada, useIntroActivada } from './IntroBienvenida.jsx'
 import PantallaBloqueo from './PantallaBloqueo.jsx'
 import ModoBadge from './ModoBadge.jsx'
+import ModoColorBoton from './ModoColorBoton.jsx'
 import PinModal from './PinModal.jsx'
 import {
   IconTaller,
@@ -239,7 +240,7 @@ export default function Layout() {
             aria-expanded={menuUsuarioAbierto}
             className="flex w-full items-center gap-3 rounded-xl border border-antracita-800 bg-antracita-800/60 p-3 text-left transition hover:border-antracita-700"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-azul-400 to-azul-600 text-xs font-semibold text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-azul-400 to-azul-600 text-xs font-semibold text-white mantener-blanco">
               {iniciales(nombre)}
             </span>
             <span className="min-w-0 flex-1">
@@ -262,9 +263,12 @@ export default function Layout() {
             </div>
             <ModoBadge />
           </div>
-          <div className="text-right">
+          <div className="flex items-center gap-3">
+            <ModoColorBoton />
+            <div className="text-right">
             <p className="text-sm font-medium text-slate-200">{nombre}</p>
             <p className="text-xs text-slate-500">{fechaHoy}</p>
+            </div>
           </div>
         </header>
         <main className="flex-1 p-4 md:p-8">
