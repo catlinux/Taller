@@ -1,6 +1,7 @@
 import prisma from '../server/db.js'
 import { calcularTotales } from '../server/routes/ordenes.js'
 import { precioSinIva } from '../server/lib/precios.js'
+import { sinStockDesdeNuevo } from '../server/lib/stock.js'
 
 // Datos DEMO totalmente inventados (empresa, clientes, bicis, artículos y órdenes).
 // Uso: npm run db:demo   (antes: npm run db:push && npm run db:seed)
@@ -136,6 +137,15 @@ async function main() {
       const compra = r2(min + rnd() * (max - min))
       const iva = 21
       const venta = r2(compra * (1.35 + rnd() * 0.4) * (1 + iva / 100)) // PVP con IVA incluido
+      // ~25 de los 150 artículos se quedan sin stock, con la fecha repartida
+      // entre hace 1 y 24 meses (para que el filtro se vea con datos).
+      const sinStock = articulos.length % 6 === 0
+      const stock = sinStock ? 0 : entre(1, 25)
+      let sinStockDesde = sinStockDesdeNuevo(stock, null)
+      if (sinStock) {
+        sinStockDesde = new Date()
+        sinStockDesde.setMonth(sinStockDesde.getMonth() - entre(1, 24))
+      }
       articulos.push(
         await prisma.articulo.create({
           data: {
@@ -144,7 +154,8 @@ async function main() {
             precioCompra: compra,
             precioVenta: venta,
             iva,
-            stock: entre(0, 25),
+            stock,
+            sinStockDesde,
             familia,
             proveedor: elegir(PROVEEDORES),
           },

@@ -20,6 +20,7 @@ import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
 import { migrarPagos } from './lib/pagos.js'
+import { rellenarSinStock } from './lib/stock.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -100,6 +101,11 @@ app.listen(PORT, () => {
 // Unifica las antiguas formas/estados de pago en el campo formaPago (idempotente).
 migrarPagos(prisma).catch((error) => {
   console.error('Error al migrar las formas de pago:', error)
+})
+
+// Rellena la fecha desde la que están sin stock los artículos existentes (idempotente).
+rellenarSinStock(prisma).catch((error) => {
+  console.error('Error al rellenar la fecha sin stock de los artículos:', error)
 })
 
 // Copia de seguridad automática: una al arrancar y luego cada 24 horas.

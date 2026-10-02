@@ -1,6 +1,6 @@
 import { AvisoSoloAdmin, PieGuardar, usePanelAjustes } from './comunes.jsx'
 
-const CLAVES = ['precioHora', 'ivaDefecto', 'diasValidezPresupuesto', 'clausulaRgpd']
+const CLAVES = ['precioHora', 'ivaDefecto', 'diasValidezPresupuesto', 'articulosOcultarMeses', 'clausulaRgpd']
 
 // Tipos de IVA que ofrece el selector (los habituales en España).
 const TIPOS_IVA = [0, 4, 10, 21]
@@ -70,6 +70,25 @@ export default function TallerPanel() {
             className="input mt-1.5"
           />
           <span className="mt-1.5 block text-xs text-slate-500">Se imprime bajo los totales del documento.</span>
+        </label>
+
+        <label className="block">
+          <span className="label">Ocultar artículos sin stock después de</span>
+          <div className="mt-1.5 flex items-center gap-2">
+            <input
+              type="number"
+              min="1"
+              max="120"
+              step="1"
+              inputMode="numeric"
+              value={borrador.articulosOcultarMeses ?? ''}
+              onChange={(event) => actualizar('articulosOcultarMeses', aNumero(event.target.value))}
+              disabled={!esAdmin}
+              className="input"
+            />
+            <span className="text-sm text-slate-400">meses</span>
+          </div>
+          <span className="mt-1.5 block text-xs text-slate-500">Se aplica solo cuando se marca la casilla de ocultar en el listado de Artículos.</span>
         </label>
       </div>
 

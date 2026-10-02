@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useAjustes } from '../context/AjustesContext.jsx'
 import ArticuloModal from '../components/ArticuloModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconAjustarStock, IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
@@ -61,6 +62,7 @@ function AjusteStockModal({ articulo, onSubmit, onClose, isSaving }) {
 
 export default function Articulos() {
   const { token } = useAuth()
+  const { ajustes } = useAjustes()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [articuloEditando, setArticuloEditando] = useState(null)
@@ -68,6 +70,12 @@ export default function Articulos() {
   const [articuloAjustando, setArticuloAjustando] = useState(null)
   const [errorAccion, setErrorAccion] = useState('')
   const [exportando, setExportando] = useState(false)
+  // Casilla para ocultar los artículos sin stock desde hace más de N meses.
+  // Empieza desmarcada en cada visita (no se recuerda).
+  const [ocultarSinStock, setOcultarSinStock] = useState(false)
+
+  // Meses que debe llevar un artículo sin stock para poder ocultarlo.
+  const meses = Number(ajustes?.articulosOcultarMeses) || 12
 
   const { data: articulos = [], isLoading, error } = useQuery(['articulos'], () => apiGet('/api/articulos', token), { enabled: Boolean(token) })
   const refrescar = () => queryClient.invalidateQueries(['articulos'])
@@ -78,10 +86,34 @@ export default function Articulos() {
   function cerrarModal() { setModalAbierto(false); setArticuloEditando(null); setErrorAccion('') }
   function cerrarAjuste() { setArticuloAjustando(null); setErrorAccion('') }
 
-  const filtrados = useMemo(() => {
+  // Fecha límite: los artículos sin stock desde antes de este momento se ocultan.
+  const corte = useMemo(() => {
+    const limite = new Date()
+    limite.setMonth(limite.getMonth() - meses)
+    return limite
+  }, [meses])
+
+  // Artículos que coinciden con la búsqueda (antes de aplicar la casilla).
+  const filtradosBusqueda = useMemo(() => {
     const termino = search.trim().toLocaleLowerCase()
     return articulos.filter((a) => !termino || [a.referencia, a.descripcion, a.familia, a.proveedor].some((v) => v?.toLocaleLowerCase().includes(termino)))
   }, [articulos, search])
+
+  // Un artículo se oculta si está sin stock y su fecha es anterior al límite.
+  // Los artículos sin stock pero sin fecha (sinStockDesde null) no se ocultan.
+  const esOcultable = (a) => Number(a.stock) <= 0 && a.sinStockDesde && new Date(a.sinStockDesde) < corte
+
+  const ocultos = useMemo(
+    () => (ocultarSinStock ? filtradosBusqueda.filter(esOcultable).length : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ocultarSinStock, filtradosBusqueda, corte],
+  )
+
+  const filtrados = useMemo(
+    () => (ocultarSinStock ? filtradosBusqueda.filter((a) => !esOcultable(a)) : filtradosBusqueda),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ocultarSinStock, filtradosBusqueda, corte],
+  )
 
   const columnas = [
     { clave: 'referencia', titulo: 'Referencia', title: 'Referencia: código interno del artículo', ancho: '170px', valor: (a) => a.referencia, clase: 'font-medium text-white' },
@@ -175,13 +207,27 @@ export default function Articulos() {
           <button onClick={abrirCrear} className="btn-primary"><IconMas size={18} /> Nuevo artículo</button>
         </div>
       </div>
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="relative block w-full sm:max-w-md">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <label className="relative block w-full lg:max-w-md">
           <span className="sr-only">Buscar artículos</span>
           <IconBuscar size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por referencia, descripción o familia…" className="input pl-10" />
         </label>
-        <p className="text-sm text-slate-500">{filtrados.length} {filtrados.length === 1 ? 'artículo' : 'artículos'}</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={ocultarSinStock}
+              onChange={(event) => setOcultarSinStock(event.target.checked)}
+              className="h-4 w-4 rounded border-antracita-600 bg-antracita-900 text-azul-500 focus:ring-2 focus:ring-azul-500/30"
+            />
+            <span>Ocultar sin stock de más de {meses} {meses === 1 ? 'mes' : 'meses'}</span>
+          </label>
+          {ocultarSinStock && (
+            <span className="text-xs text-slate-500">{ocultos} {ocultos === 1 ? 'artículo oculto' : 'artículos ocultos'}</span>
+          )}
+          <p className="text-sm text-slate-500">{filtrados.length} {filtrados.length === 1 ? 'artículo' : 'artículos'}</p>
+        </div>
       </div>
 
       {errorAccion && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}

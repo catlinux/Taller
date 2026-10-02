@@ -10,7 +10,7 @@
     "build": "vite build",
     "db:push": "prisma db push",
     "db:seed": "node scripts/seed.js",
-    "test": "node --test scripts/lib/csv.test.mjs server/lib/precios.test.mjs server/lib/seguridad.test.mjs server/lib/pagos.test.mjs src/lib/exportarCsv.test.mjs",
+    "test": "node --test scripts/lib/csv.test.mjs server/lib/precios.test.mjs server/lib/seguridad.test.mjs server/lib/pagos.test.mjs server/lib/stock.test.mjs src/lib/exportarCsv.test.mjs",
     "db:demo": "node scripts/seed-demo.js",
     "start": "node --env-file=.env server/index.js",
     "db:import:clientes": "node scripts/import-clientes.js",

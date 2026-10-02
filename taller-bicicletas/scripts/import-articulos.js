@@ -2,6 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import prisma from '../server/db.js'
 import { leerLineasCsv, dividirCampos, indiceCabecera, numeroEspanol, textoONull } from './lib/csv.js'
+import { sinStockDesdeNuevo } from '../server/lib/stock.js'
 
 // Importa los artículos desde el listado exportado del ERP antiguo.
 // Uso: node scripts/import-articulos.js [ruta.csv] [--dry-run]
@@ -102,25 +103,28 @@ function leerArticulos() {
   return { articulos: [...articulos.values()], omitidos }
 }
 
-// Devuelve los datos a escribir en un update (sin la clave única).
-function datosArticulo(articulo) {
+// Devuelve los datos a escribir en un update (sin la clave única). Conserva la
+// fecha sin stock anterior si el artículo sigue sin existencias y la pone o la
+// borra según el stock importado.
+function datosArticulo(articulo, sinStockDesdeActual) {
   const { referencia, ...resto } = articulo
-  return resto
+  return { ...resto, sinStockDesde: sinStockDesdeNuevo(articulo.stock, sinStockDesdeActual) }
 }
 
 
 async function importar() {
   const { articulos, omitidos } = leerArticulos()
 
-  // Consulta previa única de las claves existentes (para contar y para el dry-run).
-  const existentes = new Set()
+  // Consulta previa única de las claves existentes (para contar, para el dry-run
+  // y para conservar su fecha sin stock en los updates).
+  const existentes = new Map()
   if (articulos.length > 0) {
     const claves = articulos.map((articulo) => articulo.referencia)
     const filas = await prisma.articulo.findMany({
       where: { referencia: { in: claves } },
-      select: { referencia: true },
+      select: { referencia: true, sinStockDesde: true },
     })
-    for (const fila of filas) existentes.add(fila.referencia)
+    for (const fila of filas) existentes.set(fila.referencia, fila.sinStockDesde)
   }
 
   let creados = 0
@@ -137,8 +141,8 @@ async function importar() {
         lote.map((articulo) =>
           prisma.articulo.upsert({
             where: { referencia: articulo.referencia },
-            update: datosArticulo(articulo),
-            create: articulo,
+            update: datosArticulo(articulo, existentes.get(articulo.referencia)),
+            create: { ...articulo, sinStockDesde: sinStockDesdeNuevo(articulo.stock, null) },
           }),
         ),
       )

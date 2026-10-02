@@ -15,6 +15,7 @@ export const AJUSTES_DEFECTO = {
   precioHora: 30,
   ivaDefecto: 21,
   diasValidezPresupuesto: 15,
+  articulosOcultarMeses: 12,
   clausulaRgpd: '',
   sesionHoras: 8,
   pinActivado: false,

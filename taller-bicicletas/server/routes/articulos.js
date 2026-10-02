@@ -2,6 +2,7 @@ import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
+import { sinStockDesdeNuevo } from '../lib/stock.js'
 
 const router = Router()
 
@@ -163,6 +164,9 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: 'Ya existe un artículo con esa referencia' })
     }
 
+    // Fecha desde la que queda sin stock (el stock por defecto es 0).
+    datos.sinStockDesde = sinStockDesdeNuevo(datos.stock ?? 0, null)
+
     const articulo = await prisma.articulo.create({ data: datos })
     return res.status(201).json(conPrecioSinIva(articulo))
   } catch (error) {
@@ -196,6 +200,11 @@ router.put('/:id', async (req, res, next) => {
       if (duplicado) {
         return res.status(409).json({ error: 'Ya existe un artículo con esa referencia' })
       }
+    }
+
+    // Si cambia el stock, se recalcula la fecha sin stock conservando la anterior.
+    if (datos.stock !== undefined) {
+      datos.sinStockDesde = sinStockDesdeNuevo(datos.stock, existente.sinStockDesde)
     }
 
     const articulo = await prisma.articulo.update({ where: { id }, data: datos })
@@ -241,7 +250,9 @@ router.patch('/:id/stock', async (req, res, next) => {
       return res.status(400).json({ error: 'El stock resultante no puede ser negativo' })
     }
 
-    const articulo = await prisma.articulo.update({ where: { id }, data: { stock: nuevoStock } })
+    const sinStockDesde = sinStockDesdeNuevo(nuevoStock, existente.sinStockDesde)
+
+    const articulo = await prisma.articulo.update({ where: { id }, data: { stock: nuevoStock, sinStockDesde } })
     return res.json(conPrecioSinIva(articulo))
   } catch (error) {
     return next(error)
