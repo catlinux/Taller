@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
+import DataTable from '../components/DataTable.jsx'
 import { apiGet, apiPost, apiPut } from '../lib/api.js'
 
 // Formatea una fecha ISO en dd/mm/aaaa
@@ -150,6 +151,42 @@ export default function Usuarios({ embebido = false }) {
   }
   const guardando = crear.isLoading || actualizar.isLoading
 
+  const columnas = [
+    { clave: 'username', titulo: 'Usuario', ancho: '120px', valor: (usuario) => usuario.username, clase: 'font-medium text-white' },
+    { clave: 'nombre', titulo: 'Nombre', ancho: '140px', valor: (usuario) => usuario.nombre, clase: 'text-slate-400' },
+    {
+      clave: 'rol', titulo: 'Rol', ancho: '120px',
+      valor: (usuario) => (usuario.rol === 'admin' ? 'Administrador' : 'Mecánico'),
+      render: (usuario) => (usuario.rol === 'admin'
+        ? <span className="rounded-full bg-azul-500/10 px-3 py-1 text-xs font-medium text-azul-300">Administrador</span>
+        : <span className="rounded-full bg-naranja-500/10 px-3 py-1 text-xs font-medium text-naranja-300">Mecánico</span>),
+    },
+    {
+      clave: 'activo', titulo: 'Estado', ancho: '95px',
+      valor: (usuario) => (usuario.activo ? 'Activo' : 'Inactivo'),
+      render: (usuario) => (usuario.activo
+        ? <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Activo</span>
+        : <span className="rounded-full bg-slate-500/10 px-3 py-1 text-xs font-medium text-slate-400">Inactivo</span>),
+    },
+    {
+      clave: 'createdAt', titulo: 'Fecha de alta', ancho: '125px', tipo: 'fecha',
+      valor: (usuario) => usuario.createdAt,
+      render: (usuario) => <span className="block truncate text-slate-400">{formatearFecha(usuario.createdAt)}</span>,
+    },
+  ]
+
+  const acciones = (usuario) => {
+    const esPropio = usuario.id === user?.id
+    return (
+      <>
+        <button type="button" onClick={() => abrirEditar(usuario)} className="rounded-md px-3 py-1.5 text-azul-300 hover:bg-azul-500/10">Editar</button>
+        {!esPropio && (usuario.activo
+          ? <button type="button" disabled={cambiarActivo.isLoading} onClick={() => confirmarDesactivar(usuario)} className="rounded-md px-3 py-1.5 text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Desactivar</button>
+          : <button type="button" disabled={cambiarActivo.isLoading} onClick={() => reactivar(usuario)} className="rounded-md px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">Reactivar</button>)}
+      </>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -159,37 +196,17 @@ export default function Usuarios({ embebido = false }) {
 
       {errorAccion && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}
       {error && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{error.message}</p>}
-      <div className="overflow-hidden rounded-xl border border-antracita-700 bg-antracita-800">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="border-b border-antracita-700 bg-antracita-900/40 text-xs uppercase tracking-wide text-slate-500"><tr>
-              <th className="px-5 py-4">Usuario</th><th className="px-5 py-4">Nombre</th><th className="px-5 py-4">Rol</th><th className="px-5 py-4">Estado</th><th className="px-5 py-4">Fecha de alta</th><th className="px-5 py-4 text-right">Acciones</th>
-            </tr></thead>
-            <tbody className="divide-y divide-antracita-700/80">
-              {isLoading ? <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400">Cargando usuarios…</td></tr>
-                : usuarios.length === 0 ? <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400">Todavía no hay usuarios registrados.</td></tr>
-                  : usuarios.map((usuario) => {
-                    const esPropio = usuario.id === user?.id
-                    return (
-                      <tr key={usuario.id} className="hover:bg-antracita-700/30">
-                        <td className="px-5 py-4 font-medium text-white">{usuario.username}</td>
-                        <td className="px-5 py-4 text-slate-400">{usuario.nombre}</td>
-                        <td className="px-5 py-4">{usuario.rol === 'admin' ? <span className="rounded-full bg-azul-500/10 px-3 py-1 text-xs font-medium text-azul-300">Administrador</span> : <span className="rounded-full bg-naranja-500/10 px-3 py-1 text-xs font-medium text-naranja-300">Mecánico</span>}</td>
-                        <td className="px-5 py-4">{usuario.activo ? <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Activo</span> : <span className="rounded-full bg-slate-500/10 px-3 py-1 text-xs font-medium text-slate-400">Inactivo</span>}</td>
-                        <td className="px-5 py-4 text-slate-400">{formatearFecha(usuario.createdAt)}</td>
-                        <td className="px-5 py-4"><div className="flex justify-end gap-2">
-                          <button onClick={() => abrirEditar(usuario)} className="rounded-md px-3 py-1.5 text-azul-300 hover:bg-azul-500/10">Editar</button>
-                          {!esPropio && (usuario.activo
-                            ? <button disabled={cambiarActivo.isLoading} onClick={() => confirmarDesactivar(usuario)} className="rounded-md px-3 py-1.5 text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Desactivar</button>
-                            : <button disabled={cambiarActivo.isLoading} onClick={() => reactivar(usuario)} className="rounded-md px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">Reactivar</button>)}
-                        </div></td>
-                      </tr>
-                    )
-                  })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columnas={columnas}
+        filas={usuarios}
+        claveFila={(usuario) => usuario.id}
+        ordenInicial={{ clave: 'username', dir: 'asc' }}
+        acciones={acciones}
+        cargando={isLoading}
+        etiquetaPlural="usuarios"
+        anchoAcciones={190}
+        vacio="Todavía no hay usuarios registrados."
+      />
       {modalAbierto && <UsuarioModal usuario={usuarioEditando} onSubmit={guardar} onClose={cerrarModal} isSaving={guardando} />}
     </div>
   )

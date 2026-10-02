@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
+import DataTable from '../components/DataTable.jsx'
 import { apiGet, apiPost } from '../lib/api.js'
 
 // Formatea una fecha ISO como "dd/mm/aaaa hh:mm"
@@ -79,6 +80,33 @@ export default function Backups({ embebido = false }) {
     }
   }
 
+  const columnas = [
+    {
+      clave: 'createdAt', titulo: 'Fecha y hora', ancho: '170px', tipo: 'fecha',
+      valor: (backup) => backup.createdAt,
+      render: (backup) => <span className="block truncate font-medium text-white">{formatearFechaHora(backup.createdAt)}</span>,
+    },
+    {
+      clave: 'tipo', titulo: 'Tipo', ancho: '120px',
+      valor: (backup) => (backup.tipo === 'auto' ? 'Automática' : 'Manual'),
+      render: (backup) => (backup.tipo === 'auto'
+        ? <span className="rounded-full bg-azul-500/10 px-3 py-1 text-xs font-medium text-azul-300">Automática</span>
+        : <span className="rounded-full bg-naranja-500/10 px-3 py-1 text-xs font-medium text-naranja-300">Manual</span>),
+    },
+    {
+      clave: 'size', titulo: 'Tamaño', ancho: '100px', tipo: 'numero',
+      valor: (backup) => backup.size,
+      render: (backup) => <span className="block truncate text-slate-400">{formatearTamano(backup.size)}</span>,
+    },
+  ]
+
+  const acciones = (backup) => (
+    <>
+      <button type="button" disabled={descargandoId === backup.id} onClick={() => descargar(backup)} className="rounded-md px-3 py-1.5 text-azul-300 hover:bg-azul-500/10 disabled:opacity-50">{descargandoId === backup.id ? 'Descargando…' : 'Descargar'}</button>
+      <button type="button" disabled={restaurar.isLoading} onClick={() => confirmarRestaurar(backup)} className="rounded-md px-3 py-1.5 text-naranja-300 hover:bg-naranja-500/10 disabled:opacity-50">Restaurar</button>
+    </>
+  )
+
   return (
     <div className="mx-auto max-w-7xl">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -95,30 +123,17 @@ export default function Backups({ embebido = false }) {
       {aviso && <p role="status" className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{aviso}</p>}
       {errorAccion && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}
       {error && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{error.message}</p>}
-      <div className="overflow-hidden rounded-xl border border-antracita-700 bg-antracita-800">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="border-b border-antracita-700 bg-antracita-900/40 text-xs uppercase tracking-wide text-slate-500"><tr>
-              <th className="px-5 py-4">Fecha y hora</th><th className="px-5 py-4">Tipo</th><th className="px-5 py-4">Tamaño</th><th className="px-5 py-4 text-right">Acciones</th>
-            </tr></thead>
-            <tbody className="divide-y divide-antracita-700/80">
-              {isLoading ? <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400">Cargando copias de seguridad…</td></tr>
-                : backups.length === 0 ? <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400">Todavía no hay copias de seguridad.</td></tr>
-                  : backups.map((backup) => (
-                    <tr key={backup.id} className="hover:bg-antracita-700/30">
-                      <td className="px-5 py-4 font-medium text-white">{formatearFechaHora(backup.createdAt)}</td>
-                      <td className="px-5 py-4">{backup.tipo === 'auto' ? <span className="rounded-full bg-azul-500/10 px-3 py-1 text-xs font-medium text-azul-300">Automática</span> : <span className="rounded-full bg-naranja-500/10 px-3 py-1 text-xs font-medium text-naranja-300">Manual</span>}</td>
-                      <td className="px-5 py-4 text-slate-400">{formatearTamano(backup.size)}</td>
-                      <td className="px-5 py-4"><div className="flex justify-end gap-2">
-                        <button disabled={descargandoId === backup.id} onClick={() => descargar(backup)} className="rounded-md px-3 py-1.5 text-azul-300 hover:bg-azul-500/10 disabled:opacity-50">{descargandoId === backup.id ? 'Descargando…' : 'Descargar'}</button>
-                        <button disabled={restaurar.isLoading} onClick={() => confirmarRestaurar(backup)} className="rounded-md px-3 py-1.5 text-naranja-300 hover:bg-naranja-500/10 disabled:opacity-50">Restaurar</button>
-                      </div></td>
-                    </tr>
-                  ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columnas={columnas}
+        filas={backups}
+        claveFila={(backup) => backup.id}
+        ordenInicial={{ clave: 'createdAt', dir: 'desc' }}
+        acciones={acciones}
+        cargando={isLoading}
+        etiquetaPlural="copias de seguridad"
+        anchoAcciones={290}
+        vacio="Todavía no hay copias de seguridad."
+      />
     </div>
   )
 }

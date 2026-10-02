@@ -86,7 +86,8 @@ function calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones) {
     suma += px === null ? ANCHO_MINIMO_FLEXIBLE : px
   }
   if (tieneAcciones) suma += anchoAcciones
-  return Math.max(suma, ANCHO_MINIMO_TABLA)
+  const todasFijas = columnas.every((columna) => anchoEnPx(columna.ancho) !== null)
+  return todasFijas ? suma : Math.max(suma, ANCHO_MINIMO_TABLA)
 }
 
 // Construye la lista de páginas visibles con ventana y elipsis (p. ej. 1 … 4 5 6 … 49).
@@ -164,9 +165,6 @@ export default function DataTable({
     () => calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones),
     [columnas, tieneAcciones, anchoAcciones],
   )
-  // Si todas las columnas tienen ancho fijo en píxeles, la tabla usa esa suma como
-  // ancho exacto (table-layout fijo). Si hay columnas flexibles, se mantiene w-full.
-  const todoFijo = columnas.length > 0 && columnas.every((columna) => anchoEnPx(columna.ancho) !== null)
 
   // Muestra la burbuja de ayuda de una cabecera encima de ella.
   function mostrarTooltip(event, texto) {
@@ -199,10 +197,8 @@ export default function DataTable({
     <div className="card overflow-hidden">
       <div className={scrollInterno ? 'max-h-[calc(100vh-18rem)] overflow-auto' : 'overflow-x-auto'}>
         <table
-          className={`table-fixed text-left text-sm ${todoFijo ? '' : 'w-full'}`}
-          style={todoFijo
-            ? { width: `${anchoMinimo}px`, minWidth: `${anchoMinimo}px` }
-            : { minWidth: `${anchoMinimo}px` }}
+          className="w-full table-fixed text-left text-sm"
+          style={{ minWidth: `${anchoMinimo}px` }}
         >
           <colgroup>
             {columnas.map((columna) => <col key={columna.clave} style={{ width: columna.ancho }} />)}
