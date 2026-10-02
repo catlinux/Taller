@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import prisma from '../db.js'
-import { authMiddleware } from './auth.js'
+import { authMiddleware, roleMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
 import { sinStockDesdeNuevo } from '../lib/stock.js'
+import { filtrarObsoletos } from '../lib/obsoletos.js'
 
 const router = Router()
 
@@ -49,6 +50,12 @@ function numeroFinito(value) {
 function numeroNoNegativo(value) {
   const num = numeroFinito(value)
   return num !== null && num >= 0 ? num : null
+}
+
+// Lee un parámetro de consulta como entero >= 0; devuelve null si no es válido
+function enteroNoNegativoDeQuery(value) {
+  const texto = String(value).trim()
+  return /^\d+$/.test(texto) ? Number(texto) : null
 }
 
 // Valida y construye los datos de un artículo a partir del cuerpo de la petición.
@@ -127,6 +134,70 @@ router.get('/', async (req, res, next) => {
       orderBy: { id: 'asc' },
     })
     return res.json(articulos.map(conPrecioSinIva))
+  } catch (error) {
+    return next(error)
+  }
+})
+
+// GET /obsoletos -> artículos sin stock y/o sin movimientos.
+// Debe declararse ANTES de '/:id' para que no lo capture la ruta con parámetro.
+router.get('/obsoletos', async (req, res, next) => {
+  try {
+    const opciones = {}
+
+    if (req.query.sinStockDias !== undefined && req.query.sinStockDias !== '') {
+      const sinStockDias = enteroNoNegativoDeQuery(req.query.sinStockDias)
+      if (sinStockDias === null) {
+        return res.status(400).json({ error: 'sinStockDias debe ser un entero mayor o igual que 0' })
+      }
+      opciones.sinStockDias = sinStockDias
+    }
+
+    if (req.query.sinMovimientosDias !== undefined && req.query.sinMovimientosDias !== '') {
+      const sinMovimientosDias = enteroNoNegativoDeQuery(req.query.sinMovimientosDias)
+      if (sinMovimientosDias === null) {
+        return res.status(400).json({ error: 'sinMovimientosDias debe ser un entero mayor o igual que 0' })
+      }
+      opciones.sinMovimientosDias = sinMovimientosDias
+    }
+
+    // Por defecto se incluyen los artículos que nunca se han usado.
+    opciones.incluirNuncaUsados = req.query.incluirNuncaUsados === undefined || req.query.incluirNuncaUsados !== 'false'
+
+    if (req.query.q !== undefined) {
+      opciones.q = normalizarTexto(String(req.query.q))
+    }
+    if (req.query.familia !== undefined) {
+      opciones.familia = normalizarTexto(String(req.query.familia))
+    }
+    if (req.query.limite !== undefined && req.query.limite !== '') {
+      const limite = enteroNoNegativoDeQuery(req.query.limite)
+      if (limite === null) {
+        return res.status(400).json({ error: 'limite debe ser un entero mayor o igual que 0' })
+      }
+      if (limite > 0) opciones.limite = Math.min(limite, 5000)
+    }
+
+    const articulos = await prisma.articulo.findMany({
+      select: {
+        id: true,
+        referencia: true,
+        descripcion: true,
+        familia: true,
+        proveedor: true,
+        stock: true,
+        sinStockDesde: true,
+      },
+    })
+
+    // Última fecha de movimiento y número de usos por artículo, sin SQL crudo
+    // (para evitar problemas con el formato de fechas de SQLite).
+    const movimientos = await prisma.ordenMaterial.findMany({
+      where: { articuloId: { not: null } },
+      select: { articuloId: true, orden: { select: { fechaEntrada: true } } },
+    })
+
+    return res.json(filtrarObsoletos(articulos, movimientos, opciones))
   } catch (error) {
     return next(error)
   }
@@ -254,6 +325,30 @@ router.patch('/:id/stock', async (req, res, next) => {
 
     const articulo = await prisma.articulo.update({ where: { id }, data: { stock: nuevoStock, sinStockDesde } })
     return res.json(conPrecioSinIva(articulo))
+  } catch (error) {
+    return next(error)
+  }
+})
+
+// DELETE /lote -> eliminar varios artículos a la vez (solo administradores).
+// Debe declararse ANTES de '/:id' para que no lo capture la ruta con parámetro.
+router.delete('/lote', roleMiddleware('admin'), async (req, res, next) => {
+  try {
+    const { ids } = req.body ?? {}
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Debes indicar una lista de identificadores de artículos' })
+    }
+    if (ids.length > 1000) {
+      return res.status(400).json({ error: 'No se pueden eliminar más de 1000 artículos a la vez' })
+    }
+    for (const id of ids) {
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ error: 'La lista de identificadores no es válida' })
+      }
+    }
+
+    const resultado = await prisma.articulo.deleteMany({ where: { id: { in: ids } } })
+    return res.json({ eliminados: resultado.count })
   } catch (error) {
     return next(error)
   }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useAjustes } from '../context/AjustesContext.jsx'
 import ArticuloModal from '../components/ArticuloModal.jsx'
+import ArticulosTabs from '../components/ArticulosTabs.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconAjustarStock, IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../lib/api.js'
@@ -207,6 +208,7 @@ export default function Articulos() {
           <button onClick={abrirCrear} className="btn-primary"><IconMas size={18} /> Nuevo artículo</button>
         </div>
       </div>
+      <ArticulosTabs />
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <label className="relative block w-full lg:max-w-md">
           <span className="sr-only">Buscar artículos</span>

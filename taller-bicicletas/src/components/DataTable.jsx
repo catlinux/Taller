@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useFilasPorPagina, VALORES_FILAS_POR_PAGINA } from '../lib/ajustes.js'
 import {
@@ -18,6 +18,9 @@ const ANCHO_MINIMO_TABLA = 900
 // Ancho mínimo asignado a las columnas sin ancho fijo en píxeles (porcentaje o
 // flexibles), para que la suma de anchos sea realista al calcular el mínimo.
 const ANCHO_MINIMO_FLEXIBLE = 140
+
+// Ancho de la columna de casillas de selección (cuando la tabla es seleccionable).
+const ANCHO_SELECCION = 44
 
 // Clases de alineación de texto para cabecera y celdas.
 const ALINEACION_TEXTO = {
@@ -79,13 +82,14 @@ function anchoEnPx(ancho) {
 // Calcula el ancho mínimo de la tabla sumando los anchos fijos en píxeles. Las
 // columnas en porcentaje o flexibles aportan un mínimo razonable. Cuando todas las
 // columnas son fijas, la suma es el ancho real de la tabla (sin tope de 900 px).
-function calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones) {
+function calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones, tieneSeleccion = false) {
   let suma = 0
   for (const columna of columnas) {
     const px = anchoEnPx(columna.ancho)
     suma += px === null ? ANCHO_MINIMO_FLEXIBLE : px
   }
   if (tieneAcciones) suma += anchoAcciones
+  if (tieneSeleccion) suma += ANCHO_SELECCION
   const todasFijas = columnas.every((columna) => anchoEnPx(columna.ancho) !== null)
   return todasFijas ? suma : Math.max(suma, ANCHO_MINIMO_TABLA)
 }
@@ -111,6 +115,24 @@ function ValorCelda({ texto }) {
   return <span className="block truncate" title={String(contenido)}>{contenido}</span>
 }
 
+// Casilla de la cabecera de selección; refleja el estado «algunos seleccionados».
+function CasillaCabecera({ checked, indeterminate, onChange, label }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !checked && Boolean(indeterminate)
+  }, [checked, indeterminate])
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={Boolean(checked)}
+      onChange={onChange}
+      aria-label={label}
+      className="h-4 w-4 cursor-pointer rounded border-antracita-600 bg-antracita-900 text-azul-500 focus:ring-2 focus:ring-azul-500/30"
+    />
+  )
+}
+
 // Tabla de datos reutilizable: cabeceras ordenables, anchos de columna fijos y paginación.
 export default function DataTable({
   columnas = [],
@@ -130,6 +152,9 @@ export default function DataTable({
   anchoAcciones = ANCHO_ACCIONES,
   // Confina la tabla en un contenedor con scroll vertical y cabecera fija.
   scrollInterno = false,
+  // Selección opcional de filas. Objeto con { todas, algunas, estaSeleccionada(fila),
+  // alternar(fila), alternarTodas() }; si no se pasa, la tabla no muestra casillas.
+  seleccion = null,
 }) {
   const [filasPorPagina, setFilasPorPagina] = useFilasPorPagina()
   const [orden, setOrden] = useState(ordenInicial)
@@ -160,10 +185,11 @@ export default function DataTable({
   )
 
   const tieneAcciones = typeof acciones === 'function'
-  const numeroColumnas = columnas.length + (tieneAcciones ? 1 : 0)
+  const tieneSeleccion = Boolean(seleccion)
+  const numeroColumnas = columnas.length + (tieneAcciones ? 1 : 0) + (tieneSeleccion ? 1 : 0)
   const anchoMinimo = useMemo(
-    () => calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones),
-    [columnas, tieneAcciones, anchoAcciones],
+    () => calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones, tieneSeleccion),
+    [columnas, tieneAcciones, anchoAcciones, tieneSeleccion],
   )
 
   // Muestra la burbuja de ayuda de una cabecera encima de ella.
@@ -201,11 +227,22 @@ export default function DataTable({
           style={{ minWidth: `${anchoMinimo}px` }}
         >
           <colgroup>
+            {tieneSeleccion && <col style={{ width: `${ANCHO_SELECCION}px` }} />}
             {columnas.map((columna) => <col key={columna.clave} style={{ width: columna.ancho }} />)}
             {tieneAcciones && <col style={{ width: `${anchoAcciones}px` }} />}
           </colgroup>
           <thead className="border-b border-antracita-700 bg-antracita-900/60">
             <tr>
+              {tieneSeleccion && (
+                <th scope="col" className={`th ${scrollInterno ? 'sticky top-0 z-20 border-b border-antracita-700 bg-antracita-900' : ''}`}>
+                  <CasillaCabecera
+                    checked={Boolean(seleccion.todas)}
+                    indeterminate={Boolean(seleccion.algunas)}
+                    onChange={() => seleccion.alternarTodas?.()}
+                    label="Seleccionar todas las filas del filtro actual"
+                  />
+                </th>
+              )}
               {columnas.map((columna, indice) => {
                 const alinear = columna.alinear || 'izq'
                 const ordenable = columna.ordenable !== false
@@ -249,6 +286,9 @@ export default function DataTable({
             {cargando ? (
               Array.from({ length: 8 }).map((_, indiceFila) => (
                 <tr key={`esqueleto-${indiceFila}`} style={{ height: 'var(--fila-alto)' }}>
+                  {tieneSeleccion && (
+                    <td className="td"><div className="h-4 w-4 animate-pulse rounded bg-antracita-700/60" /></td>
+                  )}
                   {columnas.map((columna) => (
                     <td key={columna.clave} className="td">
                       <div className="h-3.5 w-3/4 animate-pulse rounded bg-antracita-700/60" />
@@ -277,6 +317,18 @@ export default function DataTable({
                   style={{ height: 'var(--fila-alto)' }}
                   className={`transition hover:bg-antracita-700/30 ${onFila ? 'cursor-pointer' : ''}`}
                 >
+                  {tieneSeleccion && (
+                    <td className="td align-middle">
+                      <input
+                        type="checkbox"
+                        checked={seleccion.estaSeleccionada(fila)}
+                        onChange={() => seleccion.alternar(fila)}
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label={`Seleccionar ${seleccion.descripcionFila ? seleccion.descripcionFila(fila) : 'fila'}`}
+                        className="h-4 w-4 cursor-pointer rounded border-antracita-600 bg-antracita-900 text-azul-500 focus:ring-2 focus:ring-azul-500/30"
+                      />
+                    </td>
+                  )}
                   {columnas.map((columna, indice) => {
                     const alinear = columna.alinear || 'izq'
                     const valor = columna.valor ? columna.valor(fila) : undefined
