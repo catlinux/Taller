@@ -265,7 +265,7 @@ export default function OrdenDetalle() {
     return generarPdfOrden(orden, empresas[0] ?? null, ajustes)
   }
 
-  // Abre el PDF en una pestaña nueva para imprimirlo desde el visor.
+  // Imprime el PDF abriendo directamente el diálogo de impresión del navegador.
   async function alImprimir() {
     setErrorAccion('')
     if (sucioRef.current) {
@@ -273,8 +273,9 @@ export default function OrdenDetalle() {
       return
     }
     try {
+      const { imprimirPdf } = await import('../lib/imprimirPdf.js')
       const doc = await generarDocumento()
-      window.open(doc.output('bloburl'), '_blank')
+      imprimirPdf(doc)
     } catch (e) {
       setErrorAccion(e.message)
     }
