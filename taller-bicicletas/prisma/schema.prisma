@@ -128,6 +128,7 @@ model Articulo {
   precioVenta   Float     @default(0)
   iva           Float     @default(21) // 21, 10, 4, 0
   stock         Float     @default(0)
+  sinStockDesde DateTime? // Desde cuándo está sin stock (stock <= 0); null si hay existencias
   familia       String?
   proveedor     String?
   createdAt     DateTime  @default(now())
@@ -139,6 +140,7 @@ model Articulo {
   @@index([referencia])
   @@index([descripcion])
   @@index([familia])
+  @@index([sinStockDesde])
 }
 
 // ═══════════════════════════════════════════════════════════════
