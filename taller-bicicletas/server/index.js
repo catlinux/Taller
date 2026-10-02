@@ -18,6 +18,7 @@ import ajustesRoutes from './routes/ajustes.js'
 import modoRoutes from './routes/modo.js'
 import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
+import { cabecerasSeguridad } from './lib/seguridad.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -25,8 +26,27 @@ const __dirname = dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// En producción vamos detrás del proxy inverso Apache (HTTPS), que envía
+// X-Forwarded-For; confiar en él hace que req.ip sea la IP real del cliente.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1)
+}
+// Quita la cabecera X-Powered-By para no revelar el framework.
+app.disable('x-powered-by')
+
+// Cabeceras de seguridad para todas las respuestas.
+app.use(cabecerasSeguridad)
+
 // Middleware
-app.use(cors())
+if (process.env.NODE_ENV === 'production') {
+  // En producción la web se sirve desde el mismo origen que la API, así que no
+  // hace falta CORS; solo se permite si se configura un origen explícito.
+  if (process.env.CORS_ORIGIN) {
+    app.use(cors({ origin: process.env.CORS_ORIGIN }))
+  }
+} else {
+  app.use(cors())
+}
 app.use(express.json({ limit: '10mb' }))
 
 // Rutas API

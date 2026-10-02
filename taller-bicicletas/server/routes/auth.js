@@ -3,8 +3,12 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import prisma from '../db.js'
 import { obtenerAjustes } from './ajustes.js'
+import { crearLimitadorLogin } from '../lib/seguridad.js'
 
 const router = Router()
+
+// Limita los intentos fallidos de login por IP (10 fallos / 15 minutos).
+const limitadorLogin = crearLimitadorLogin()
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   throw new Error('Falta JWT_SECRET en el entorno: es obligatorio en producción (ver .env.example)')
 }
@@ -18,7 +22,7 @@ const publicUser = ({ id, username, nombre, rol, activo, pinHash }) => ({
   tienePin: Boolean(pinHash),
 })
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', limitadorLogin, async (req, res, next) => {
   try {
     const { username, password } = req.body ?? {}
     if (typeof username !== 'string' || typeof password !== 'string') {
