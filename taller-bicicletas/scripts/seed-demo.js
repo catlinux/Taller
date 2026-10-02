@@ -176,8 +176,15 @@ async function main() {
   for (let i = 0; i < estados.length; i++) {
     const bici = bicis[i * 2]
     const materiales = []
+    const usados = new Set()
     for (let k = 0; k < entre(1, 3); k++) {
-      const art = elegir(articulos)
+      let art = elegir(articulos)
+      let intentos = 0
+      while (usados.has(art.id) && intentos < 6) {
+        art = elegir(articulos)
+        intentos++
+      }
+      usados.add(art.id)
       const cantidad = entre(1, 2)
       const unitario = precioSinIva(art.precioVenta, art.iva)
       const precioNeto = r2(cantidad * unitario)
@@ -205,7 +212,9 @@ async function main() {
       })
     }
     const totales = calcularTotales(materiales, manoObra, 0)
-    const entrada = new Date(ahora - (estados.length - i) * 3 * 86400000)
+    // Fechas de entrada repartidas a lo largo de los últimos ~5 meses para que el
+    // listado de consumo tenga datos en varios periodos (día, semana, mes, año).
+    const entrada = new Date(ahora - (estados.length - i) * 17 * 86400000)
     const cerrada = ['Finalizada', 'Entregada'].includes(estados[i])
     await prisma.ordenReparacion.create({
       data: {

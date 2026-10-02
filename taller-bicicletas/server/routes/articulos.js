@@ -4,6 +4,7 @@ import { authMiddleware, roleMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
 import { sinStockDesdeNuevo } from '../lib/stock.js'
 import { filtrarObsoletos } from '../lib/obsoletos.js'
+import { agruparConsumo, resolverEstados, AGRUPACIONES, rangoDeFechas, parseFechaISO } from '../lib/consumo.js'
 
 const router = Router()
 
@@ -33,6 +34,14 @@ function conPrecioSinIva(articulo) {
 function normalizarTexto(value) {
   if (typeof value !== 'string') return value
   const limpio = value.trim()
+  return limpio === '' ? null : limpio
+}
+
+// Lee un parámetro de consulta como texto recortado; null si falta, está vacío
+// o llega repetido (array).
+function textoDeQuery(value) {
+  if (value === undefined || value === null || Array.isArray(value)) return null
+  const limpio = String(value).trim()
   return limpio === '' ? null : limpio
 }
 
@@ -198,6 +207,98 @@ router.get('/obsoletos', async (req, res, next) => {
     })
 
     return res.json(filtrarObsoletos(articulos, movimientos, opciones))
+  } catch (error) {
+    return next(error)
+  }
+})
+
+// GET /consumo -> consumo de materiales por artículo en un rango de fechas.
+// Debe declararse ANTES de '/:id' para que no lo capture la ruta con parámetro.
+router.get('/consumo', async (req, res, next) => {
+  try {
+    const desdeTexto = textoDeQuery(req.query.desde)
+    const hastaTexto = textoDeQuery(req.query.hasta)
+
+    if (desdeTexto !== null && parseFechaISO(desdeTexto) === null) {
+      return res.status(400).json({ error: 'desde debe tener el formato AAAA-MM-DD' })
+    }
+    if (hastaTexto !== null && parseFechaISO(hastaTexto) === null) {
+      return res.status(400).json({ error: 'hasta debe tener el formato AAAA-MM-DD' })
+    }
+
+    const agrupar = textoDeQuery(req.query.agrupar) ?? 'ninguno'
+    if (!AGRUPACIONES.includes(agrupar)) {
+      return res.status(400).json({ error: `agrupar debe ser uno de: ${AGRUPACIONES.join(', ')}` })
+    }
+
+    // Por defecto se excluye Presupuesto (un presupuesto no es consumo real).
+    const estados = resolverEstados(req.query.estados)
+
+    const rango = rangoDeFechas(desdeTexto, hastaTexto)
+    const where = { orden: { estado: { in: estados } } }
+    if (rango.desde !== null || rango.hasta !== null) {
+      where.orden.fechaEntrada = {}
+      if (rango.desde !== null) where.orden.fechaEntrada.gte = rango.desde
+      if (rango.hasta !== null) where.orden.fechaEntrada.lte = rango.hasta
+    }
+
+    if (req.query.mecanicoId !== undefined && String(req.query.mecanicoId).trim() !== '') {
+      const mecanicoId = parseId(req.query.mecanicoId)
+      if (mecanicoId === null) {
+        return res.status(400).json({ error: 'mecanicoId no válido' })
+      }
+      where.orden.mecanicoId = mecanicoId
+    }
+
+    const q = textoDeQuery(req.query.q)
+    if (q !== null) {
+      where.OR = [
+        { referencia: { contains: q } },
+        { descripcion: { contains: q } },
+      ]
+    }
+
+    const filtroArticulo = {}
+    const familia = textoDeQuery(req.query.familia)
+    if (familia !== null) filtroArticulo.familia = familia
+    const proveedor = textoDeQuery(req.query.proveedor)
+    if (proveedor !== null) filtroArticulo.proveedor = proveedor
+    if (Object.keys(filtroArticulo).length > 0) where.articulo = filtroArticulo
+
+    const lineas = await prisma.ordenMaterial.findMany({
+      where,
+      select: {
+        articuloId: true,
+        referencia: true,
+        descripcion: true,
+        cantidad: true,
+        precioNeto: true,
+        orden: { select: { id: true, fechaEntrada: true } },
+        articulo: { select: { familia: true, proveedor: true, precioCompra: true } },
+      },
+    })
+
+    const datos = lineas.map((linea) => ({
+      articuloId: linea.articuloId,
+      referencia: linea.referencia,
+      descripcion: linea.descripcion,
+      cantidad: linea.cantidad,
+      precioNeto: linea.precioNeto,
+      fecha: linea.orden.fechaEntrada,
+      ordenId: linea.orden.id,
+      familia: linea.articulo?.familia ?? null,
+      proveedor: linea.articulo?.proveedor ?? null,
+      precioCompra: linea.articulo?.precioCompra ?? 0,
+    }))
+
+    const resultado = agruparConsumo(datos, { desde: desdeTexto, hasta: hastaTexto, agrupar })
+
+    return res.json({
+      desde: desdeTexto,
+      hasta: hastaTexto,
+      agrupar,
+      ...resultado,
+    })
   } catch (error) {
     return next(error)
   }

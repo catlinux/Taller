@@ -56,3 +56,13 @@ Son bases independientes, cada una con sus usuarios y sus copias de seguridad (`
 - **Tests:** `npm test` en `taller-bicicletas` (lector CSV y cálculos de precios).
 - Al arrancar, el servidor avisa si `admin` o `mecanico` conservan la contraseña de ejemplo.
 - **Sin buscadores:** la aplicación es privada y no debe aparecer en Google. Lo evitan `robots.txt` (`Disallow: /`), la etiqueta `<meta name="robots" content="noindex…">` y la cabecera `X-Robots-Tag` (la envía la app y el VirtualHost de Apache). Para reforzarlo, protege también el subdominio con la contraseña de la propia app o con restricción de IP si lo prefieres.
+
+## Artículos: obsoletos y consumo
+
+En **Artículos** hay tres pestañas:
+
+- **Catálogo:** listado normal. Arriba hay una casilla «Ocultar sin stock de más de N meses» (desmarcada por defecto; N se cambia en Configuración › Taller). Para saber desde cuándo un artículo está sin stock, la app guarda la fecha en que pasó a stock ≤ 0.
+- **Obsoletos:** artículos sin stock y/o sin movimientos (no aparecen en ninguna orden) desde hace al menos X días/semanas/meses/años. Se pueden seleccionar y borrar a mano (solo administradores) y exportar a Excel. Las órdenes antiguas conservan sus líneas.
+- **Consumo:** materiales consumidos en cualquier periodo (por fecha de entrada de la orden), con atajos (esta semana, mes pasado…), desglose por día/semana/mes/año y filtros por texto, familia, proveedor, mecánico y estado de la orden (los presupuestos no cuentan por defecto). Exporta a Excel y CSV.
+
+La «Forma de pago» de las órdenes es un único campo: Pendiente, Parcial, Efectivo, Tarjeta, Bizum o Transferencia, y se ve en la columna «Pago» del listado.

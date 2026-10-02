@@ -10,6 +10,7 @@ import Bicicletas from './pages/Bicicletas.jsx'
 import BicicletaDetalle from './pages/BicicletaDetalle.jsx'
 import Articulos from './pages/Articulos.jsx'
 import ArticulosObsoletos from './pages/ArticulosObsoletos.jsx'
+import ArticulosConsumo from './pages/ArticulosConsumo.jsx'
 import Ordenes from './pages/Ordenes.jsx'
 
 // Páginas de carga diferida: solo se descargan cuando se navega a ellas.
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/bicicletas/:id" element={<BicicletaDetalle />} />
           <Route path="/articulos" element={<Articulos />} />
           <Route path="/articulos/obsoletos" element={<ArticulosObsoletos />} />
+          <Route path="/articulos/consumo" element={<ArticulosConsumo />} />
           <Route path="/ordenes" element={<Ordenes />} />
           <Route path="/ordenes/nueva" element={<OrdenDetalle />} />
           <Route path="/ordenes/:id" element={<OrdenDetalle />} />

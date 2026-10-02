@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
 
-// Pestañas del apartado de Artículos. Es un array fácil de ampliar (por ejemplo,
-// más adelante se añadirá una pestaña «Consumo»).
+// Pestañas del apartado de Artículos. Es un array fácil de ampliar.
 const PESTANAS = [
   { to: '/articulos', etiqueta: 'Catálogo', end: true },
   { to: '/articulos/obsoletos', etiqueta: 'Obsoletos', end: false },
+  { to: '/articulos/consumo', etiqueta: 'Consumo', end: false },
 ]
 
 // Navegación de pestañas de Artículos, con estilo de subrayado válido en modo
