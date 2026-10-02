@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useFilasPorPagina, VALORES_FILAS_POR_PAGINA } from '../lib/ajustes.js'
 import {
   IconFlechaArriba,
@@ -8,11 +9,15 @@ import {
   IconBuscar,
 } from './Icons.jsx'
 
-// Ancho fijo de la columna de acciones.
+// Ancho por defecto de la columna de acciones (configurable con la prop `anchoAcciones`).
 const ANCHO_ACCIONES = 170
 
 // Ancho mínimo de la tabla para forzar scroll horizontal en tablet en vez de deformarse.
 const ANCHO_MINIMO_TABLA = 900
+
+// Ancho mínimo asignado a las columnas sin ancho fijo en píxeles (porcentaje o
+// flexibles), para que la suma de anchos sea realista al calcular el mínimo.
+const ANCHO_MINIMO_FLEXIBLE = 140
 
 // Clases de alineación de texto para cabecera y celdas.
 const ALINEACION_TEXTO = {
@@ -65,14 +70,22 @@ function compararFilas(filaA, filaB, columna, dir) {
   return dir === 'desc' ? -resultado : resultado
 }
 
-// Calcula el ancho mínimo de la tabla a partir de los anchos fijos en píxeles.
-function calcularAnchoMinimo(columnas, tieneAcciones) {
+// Devuelve el ancho en píxeles de una columna si está fijado como 'NNpx', o null.
+function anchoEnPx(ancho) {
+  const coincide = /^(\d+(?:\.\d+)?)px$/.exec(String(ancho || '').trim())
+  return coincide ? Number(coincide[1]) : null
+}
+
+// Calcula el ancho mínimo de la tabla sumando los anchos fijos en píxeles. Las
+// columnas en porcentaje o flexibles aportan un mínimo razonable. Cuando todas las
+// columnas son fijas, la suma es el ancho real de la tabla (sin tope de 900 px).
+function calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones) {
   let suma = 0
   for (const columna of columnas) {
-    const coincide = /^(\d+(?:\.\d+)?)px$/.exec(String(columna.ancho || '').trim())
-    if (coincide) suma += Number(coincide[1])
+    const px = anchoEnPx(columna.ancho)
+    suma += px === null ? ANCHO_MINIMO_FLEXIBLE : px
   }
-  if (tieneAcciones) suma += ANCHO_ACCIONES
+  if (tieneAcciones) suma += anchoAcciones
   return Math.max(suma, ANCHO_MINIMO_TABLA)
 }
 
@@ -110,10 +123,18 @@ export default function DataTable({
   etiquetaPlural = 'registros',
   // Al cambiar este valor se vuelve a la página 1 (p. ej. al cambiar la búsqueda o un filtro).
   claveReinicio,
+  // Fija la primera columna al hacer scroll horizontal (útil en tablas anchas).
+  primeraColumnaFija = false,
+  // Ancho de la columna de acciones en píxeles.
+  anchoAcciones = ANCHO_ACCIONES,
+  // Confina la tabla en un contenedor con scroll vertical y cabecera fija.
+  scrollInterno = false,
 }) {
   const [filasPorPagina, setFilasPorPagina] = useFilasPorPagina()
   const [orden, setOrden] = useState(ordenInicial)
   const [pagina, setPagina] = useState(1)
+  // Burbuja de ayuda de las cabeceras (posición fija mediante portal).
+  const [tooltip, setTooltip] = useState(null)
 
   // Vuelve a la página 1 cuando cambia la clave de reinicio (búsqueda/filtros).
   useEffect(() => {
@@ -139,7 +160,24 @@ export default function DataTable({
 
   const tieneAcciones = typeof acciones === 'function'
   const numeroColumnas = columnas.length + (tieneAcciones ? 1 : 0)
-  const anchoMinimo = useMemo(() => calcularAnchoMinimo(columnas, tieneAcciones), [columnas, tieneAcciones])
+  const anchoMinimo = useMemo(
+    () => calcularAnchoMinimo(columnas, tieneAcciones, anchoAcciones),
+    [columnas, tieneAcciones, anchoAcciones],
+  )
+  // Si todas las columnas tienen ancho fijo en píxeles, la tabla usa esa suma como
+  // ancho exacto (table-layout fijo). Si hay columnas flexibles, se mantiene w-full.
+  const todoFijo = columnas.length > 0 && columnas.every((columna) => anchoEnPx(columna.ancho) !== null)
+
+  // Muestra la burbuja de ayuda de una cabecera encima de ella.
+  function mostrarTooltip(event, texto) {
+    if (!texto) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTooltip({ texto, x: rect.left + rect.width / 2, y: rect.top })
+  }
+
+  function ocultarTooltip() {
+    setTooltip(null)
+  }
 
   function alternarOrden(columna) {
     if (columna.ordenable === false) return
@@ -159,21 +197,36 @@ export default function DataTable({
 
   return (
     <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed text-left text-sm" style={{ minWidth: `${anchoMinimo}px` }}>
+      <div className={scrollInterno ? 'max-h-[calc(100vh-18rem)] overflow-auto' : 'overflow-x-auto'}>
+        <table
+          className={`table-fixed text-left text-sm ${todoFijo ? '' : 'w-full'}`}
+          style={todoFijo
+            ? { width: `${anchoMinimo}px`, minWidth: `${anchoMinimo}px` }
+            : { minWidth: `${anchoMinimo}px` }}
+        >
           <colgroup>
             {columnas.map((columna) => <col key={columna.clave} style={{ width: columna.ancho }} />)}
-            {tieneAcciones && <col style={{ width: `${ANCHO_ACCIONES}px` }} />}
+            {tieneAcciones && <col style={{ width: `${anchoAcciones}px` }} />}
           </colgroup>
           <thead className="border-b border-antracita-700 bg-antracita-900/60">
             <tr>
-              {columnas.map((columna) => {
+              {columnas.map((columna, indice) => {
                 const alinear = columna.alinear || 'izq'
                 const ordenable = columna.ordenable !== false
                 const activa = orden && orden.clave === columna.clave
                 const ariaSort = activa ? (orden.dir === 'asc' ? 'ascending' : 'descending') : 'none'
+                const fija = primeraColumnaFija && indice === 0
+                const stickyTop = scrollInterno ? 'sticky top-0 z-20 border-b border-antracita-700 bg-antracita-900' : ''
+                const stickyIzq = fija ? `sticky left-0 ${scrollInterno ? 'z-30' : 'z-10'} bg-antracita-900` : ''
                 return (
-                  <th key={columna.clave} scope="col" aria-sort={ordenable ? ariaSort : undefined} className={`th group ${ALINEACION_TEXTO[alinear]}`}>
+                  <th
+                    key={columna.clave}
+                    scope="col"
+                    aria-sort={ordenable ? ariaSort : undefined}
+                    onMouseEnter={(event) => mostrarTooltip(event, columna.title)}
+                    onMouseLeave={ocultarTooltip}
+                    className={`th group ${ALINEACION_TEXTO[alinear]} ${stickyTop} ${stickyIzq}`}
+                  >
                     {ordenable ? (
                       <button
                         type="button"
@@ -193,7 +246,7 @@ export default function DataTable({
                   </th>
                 )
               })}
-              {tieneAcciones && <th scope="col" className="th text-right">Acciones</th>}
+              {tieneAcciones && <th scope="col" className={`th text-right ${scrollInterno ? 'sticky top-0 z-20 border-b border-antracita-700 bg-antracita-900' : ''}`}>Acciones</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-antracita-700/80">
@@ -228,11 +281,12 @@ export default function DataTable({
                   style={{ height: 'var(--fila-alto)' }}
                   className={`transition hover:bg-antracita-700/30 ${onFila ? 'cursor-pointer' : ''}`}
                 >
-                  {columnas.map((columna) => {
+                  {columnas.map((columna, indice) => {
                     const alinear = columna.alinear || 'izq'
                     const valor = columna.valor ? columna.valor(fila) : undefined
+                    const fija = primeraColumnaFija && indice === 0
                     return (
-                      <td key={columna.clave} className={`td align-middle ${ALINEACION_TEXTO[alinear]} ${columna.clase || ''}`}>
+                      <td key={columna.clave} className={`td align-middle ${ALINEACION_TEXTO[alinear]} ${columna.clase || ''} ${fija ? 'sticky left-0 z-10 border-r border-antracita-700 bg-antracita-800 shadow-[4px_0_6px_-4px_rgba(0,0,0,0.55)]' : ''}`}>
                         {columna.render ? columna.render(fila) : <ValorCelda texto={valor} />}
                       </td>
                     )
@@ -319,6 +373,17 @@ export default function DataTable({
           </select>
         </label>
       </div>
+
+      {tooltip && createPortal(
+        <div
+          role="tooltip"
+          className="pointer-events-none fixed z-[60] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-antracita-600 bg-antracita-950 px-3 py-1.5 text-xs font-normal normal-case tracking-normal text-white shadow-2xl"
+          style={{ left: tooltip.x, top: tooltip.y - 8 }}
+        >
+          {tooltip.texto}
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }
