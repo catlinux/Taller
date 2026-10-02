@@ -85,22 +85,39 @@ function parseFecha(value) {
   return Number.isNaN(fecha.getTime()) ? null : fecha
 }
 
-// Genera el siguiente número de orden con formato ORD-YYYY-NNNN para el año actual
+// Genera el siguiente número de orden con formato ORD-YYYY-NNNN para el año actual.
+// El número nunca se reutiliza: se guarda por año un contador (clave
+// `contadorOrdenes-<AAAA>` en la tabla Ajuste) con el último número emitido, de
+// modo que, aunque se borre la última orden, el siguiente número sigue subiendo.
 async function generarNumeroOrden(client = prisma) {
-  const prefijo = `ORD-${new Date().getFullYear()}-`
+  const anio = new Date().getFullYear()
+  const prefijo = `ORD-${anio}-`
+  const claveContador = `contadorOrdenes-${anio}`
+
   const ultima = await client.ordenReparacion.findFirst({
     where: { numeroOrden: { startsWith: prefijo } },
     orderBy: { numeroOrden: 'desc' },
   })
 
-  let siguiente = 1
+  let ultimoEmitido = 0
   if (ultima) {
-    const partes = ultima.numeroOrden.split('-')
-    const numero = Number(partes[2])
+    const numero = Number(ultima.numeroOrden.split('-')[2])
     if (Number.isInteger(numero) && numero >= 1) {
-      siguiente = numero + 1
+      ultimoEmitido = numero
     }
   }
+
+  // El contador guardado puede ser mayor que el número más alto existente (por
+  // ejemplo, si se borró la última orden), así que se toma el mayor de los dos.
+  const contador = await client.ajuste.findUnique({ where: { clave: claveContador } })
+  if (contador) {
+    const guardado = Number(contador.valor)
+    if (Number.isInteger(guardado) && guardado > ultimoEmitido) {
+      ultimoEmitido = guardado
+    }
+  }
+
+  let siguiente = ultimoEmitido + 1
 
   // Evita colisiones si el número calculado ya existe
   let numeroOrden
@@ -110,6 +127,14 @@ async function generarNumeroOrden(client = prisma) {
     if (!existe) break
     siguiente += 1
   } while (true)
+
+  // Persiste el contador con el mismo cliente para que, dentro de una transacción,
+  // la reserva del número sea atómica.
+  await client.ajuste.upsert({
+    where: { clave: claveContador },
+    update: { valor: String(siguiente) },
+    create: { clave: claveContador, valor: String(siguiente) },
+  })
 
   return numeroOrden
 }
