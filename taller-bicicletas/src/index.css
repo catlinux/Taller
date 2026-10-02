@@ -1,0 +1,457 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Acento por defecto (azul) como canales RGB, para que Tailwind aplique las
+     opacidades (p. ej. bg-azul-500/10). Se sobreescriben con data-acento. */
+  --acento-300: 156 196 255;
+  --acento-400: 106 166 255;
+  --acento-500: 61 139 255;
+  --acento-600: 47 111 237;
+
+  /* Densidad cómoda (por defecto). Se sobreescriben con data-densidad. */
+  --fila-alto: 56px;
+  --celda-py: 12px;
+  --campo-py: 10px;
+  --gap-seccion: 24px;
+
+  /* Esquinas normales (por defecto). Se sobreescriben con data-radio. */
+  --radio-card: 16px;
+  --radio-control: 8px;
+}
+
+/* Paletas de acento alternativas (atributo data-acento en <html>). */
+html[data-acento='naranja'] {
+  --acento-300: 255 192 138;
+  --acento-400: 255 154 85;
+  --acento-500: 255 122 47;
+  --acento-600: 232 98 26;
+}
+
+html[data-acento='verde'] {
+  --acento-300: 134 239 172;
+  --acento-400: 74 222 128;
+  --acento-500: 34 197 94;
+  --acento-600: 22 163 74;
+}
+
+html[data-acento='violeta'] {
+  --acento-300: 196 181 253;
+  --acento-400: 167 139 250;
+  --acento-500: 139 92 246;
+  --acento-600: 124 58 237;
+}
+
+html[data-acento='rosa'] {
+  --acento-300: 249 168 212;
+  --acento-400: 244 114 182;
+  --acento-500: 236 72 153;
+  --acento-600: 219 39 119;
+}
+
+/* Densidad de la interfaz (atributo data-densidad en <html>). */
+html[data-densidad='compacta'] {
+  --fila-alto: 40px;
+  --celda-py: 6px;
+  --campo-py: 6px;
+  --gap-seccion: 14px;
+}
+
+/* Radio de las esquinas (atributo data-radio en <html>). */
+html[data-radio='redondeado'] {
+  --radio-card: 24px;
+  --radio-control: 12px;
+}
+
+html[data-radio='recto'] {
+  --radio-card: 6px;
+  --radio-control: 4px;
+}
+
+/* Reserva siempre el hueco de la barra de desplazamiento: así los anchos de
+   columna no cambian entre páginas con muchas y con pocas filas */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background-color: #0F1215;
+  background-image: radial-gradient(circle at 0% 0%, rgb(var(--acento-500) / 0.06), transparent 45%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  font-feature-settings: 'cv11' 1, 'ss01' 1;
+}
+
+button, input {
+  font: inherit;
+}
+
+/* Scrollbars finas y oscuras, acordes con el tema */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #363D46 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #363D46;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #4A5157;
+}
+
+@layer base {
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid rgb(var(--acento-500));
+    outline-offset: 2px;
+  }
+
+  /* Optimización para tablet / pantallas táctiles: áreas táctiles cómodas */
+  @media (pointer: coarse) {
+    button,
+    input,
+    select,
+    textarea {
+      min-height: 44px;
+    }
+  }
+}
+
+@layer components {
+  /* Superficies en capas */
+  .card {
+    @apply border border-antracita-700 bg-antracita-800 shadow-suave;
+    border-radius: var(--radio-card);
+  }
+
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-px hover:border-antracita-600;
+  }
+
+  /* Botones */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azul-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-antracita-950 disabled:cursor-wait disabled:opacity-60;
+    border-radius: var(--radio-control);
+    padding-top: var(--campo-py);
+    padding-bottom: var(--campo-py);
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-b from-azul-500 to-azul-600 text-white hover:shadow-brillo-azul;
+  }
+
+  .btn-secondary {
+    @apply btn border border-antracita-600 bg-antracita-800 text-slate-200 hover:bg-antracita-700;
+  }
+
+  .btn-ghost {
+    @apply btn text-slate-300 hover:bg-antracita-800 hover:text-white;
+  }
+
+  .btn-peligro {
+    @apply btn bg-peligro/10 text-peligro hover:bg-peligro/20;
+  }
+
+  /* Formularios */
+  .input {
+    @apply w-full border border-antracita-600 bg-antracita-900 px-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-azul-500 focus:ring-2 focus:ring-azul-500/30;
+    border-radius: var(--radio-control);
+    padding-top: var(--campo-py);
+    padding-bottom: var(--campo-py);
+  }
+
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wide text-slate-400;
+  }
+
+  /* Pastilla */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* Tablas */
+  .th {
+    @apply px-4 text-left text-xs font-medium uppercase tracking-wide text-slate-400;
+    padding-top: var(--celda-py);
+    padding-bottom: var(--celda-py);
+  }
+
+  .td {
+    @apply border-b border-antracita-700/60 px-4 text-sm;
+    padding-top: var(--celda-py);
+    padding-bottom: var(--celda-py);
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ===================== Animación de bienvenida ===================== */
+/* Fondo antracita con un degradado radial azul muy sutil. */
+.intro-fondo {
+  background-image: radial-gradient(circle at 50% 35%, rgb(var(--acento-500) / 0.16), transparent 55%);
+}
+
+/* Logo: aparece suavemente y su anillo se dibuja alrededor. */
+.intro-logo {
+  animation: introAparece 0.5s ease-out 0.05s both;
+}
+
+.intro-anillo {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: introAnillo 0.7s ease-out forwards;
+}
+
+.intro-destello {
+  background: radial-gradient(circle, rgb(var(--acento-400) / 0.55), transparent 70%);
+  animation: introDestello 0.7s ease-out both;
+}
+
+/* Bicicleta: se dibuja y luego cruza la pantalla. */
+.intro-bici {
+  animation: introViaje 1.8s ease-in-out 1.4s both;
+  will-change: transform;
+}
+
+.intro-bici-svg {
+  overflow: visible;
+}
+
+.intro-dibujo {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: introDibujo 0.9s ease-out 0.5s forwards;
+}
+
+.intro-rueda {
+  animation: introGira 0.55s linear infinite;
+}
+
+/* Estela: línea que se alarga con degradado azul -> naranja -> transparente. */
+.intro-estela {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 122, 47, 0.55) 45%, rgb(var(--acento-500) / 0.9));
+  border-radius: 9999px;
+  transform-origin: right center;
+  animation: introEstela 1.8s ease-in-out 1.4s both;
+}
+
+/* Partículas naranjas que se desvanecen detrás de la bicicleta. */
+.intro-particula {
+  background-color: #FF7A2F;
+  animation: introParticula 1.3s ease-out both;
+}
+
+/* Saludo por palabras, subtítulo, tarjetas y pista. */
+.intro-palabra {
+  opacity: 0;
+  animation: introPalabra 0.5s ease-out both;
+}
+
+.intro-subtitulo,
+.intro-tarjeta {
+  opacity: 0;
+  animation: introApareceSuave 0.5s ease-out both;
+}
+
+.intro-pista {
+  opacity: 0;
+  animation: introApareceSuave 0.6s ease-out 0.8s both;
+}
+
+/* Salida del overlay: fundido con un ligero zoom (o rápido si se salta). */
+.intro-salida {
+  animation: introSalida 0.8s ease-in forwards;
+}
+
+.intro-salida-rapida {
+  animation: introSalidaRapida 0.25s ease-in forwards;
+}
+
+/* Movimiento reducido: sin bicicleta ni animaciones, solo un fundido. */
+.intro-reducido .intro-decorativo {
+  display: none;
+}
+
+.intro-reducido .intro-anim,
+.intro-reducido .intro-logo,
+.intro-reducido .intro-anillo {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  stroke-dashoffset: 0 !important;
+}
+
+@keyframes introAparece {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes introAnillo {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes introDestello {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@keyframes introViaje {
+  from {
+    transform: translateX(-30vw);
+  }
+  to {
+    transform: translateX(130vw);
+  }
+}
+
+@keyframes introDibujo {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes introGira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes introEstela {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes introParticula {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+  }
+  25% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-42px, 12px) scale(1);
+  }
+}
+
+@keyframes introPalabra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes introApareceSuave {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes introSalida {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes introSalidaRapida {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ===================== Pantalla de bloqueo (PIN) ===================== */
+/* Sacudida de los puntos del PIN cuando el código es incorrecto. */
+.pin-sacudida {
+  animation: pinSacudida 0.4s ease-in-out;
+}
+
+@keyframes pinSacudida {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(9px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* Movimiento reducido: la sacudida se desactiva. */
+@media (prefers-reduced-motion: reduce) {
+  .pin-sacudida {
+    animation: none;
+  }
+}

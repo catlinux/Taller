@@ -1,0 +1,16 @@
+# Copiar a /etc/systemd/system/taller.service y ajustar User y rutas.
+# Después: systemctl daemon-reload && systemctl enable --now taller
+[Unit]
+Description=Taller de bicicletas
+After=network.target
+
+[Service]
+Type=simple
+User=taller
+WorkingDirectory=/opt/taller/taller-bicicletas
+EnvironmentFile=/opt/taller/taller-bicicletas/.env
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

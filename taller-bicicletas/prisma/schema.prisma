@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURACIÓN DE EMPRESA
+// ═══════════════════════════════════════════════════════════════
+model Empresa {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  cif           String
+  direccion     String
+  codigoPostal  String
+  ciudad        String
+  provincia     String
+  telefono      String
+  email         String
+  web           String?
+  logoUrl       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════
+// USUARIOS (Multiusuario)
+// ═══════════════════════════════════════════════════════════════
+model Usuario {
+  id               Int       @id @default(autoincrement())
+  username         String    @unique
+  password         String
+  nombre           String
+  rol              String    @default("mecanico") // admin, mecandministrador
+  activo           Boolean   @default(true)
+  pinHash          String?
+  pinIntentos      Int       @default(0)
+  pinBloqueadoHasta DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MECÁNICOS (Lista propia del taller, gestionada en Configuración)
+// ═══════════════════════════════════════════════════════════════
+model Mecanico {
+  id            Int       @id @default(autoincrement())
+  nombre        String    @unique
+  activo        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  ordenes       OrdenReparacion[]
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AJUSTES DE LA APLICACIÓN (Pares clave/valor, valor en JSON)
+// ═══════════════════════════════════════════════════════════════
+model Ajuste {
+  clave         String    @id
+  valor         String
+  updatedAt     DateTime  @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLIENTES
+// ═══════════════════════════════════════════════════════════════
+model Cliente {
+  id            Int         @id @default(autoincrement())
+  numeroCliente Int         @unique
+  nombre        String
+  apellidos     String?
+  dni           String?
+  direccion     String?
+  codigoPostal  String?
+  poblacion     String?
+  provincia     String?
+  telefono      String?
+  email         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relaciones
+  bicicletas    Bicicleta[]
+  ordenes       OrdenReparacion[]
+
+  @@index([nombre])
+  @@index([numeroCliente])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BICICLETAS
+// ═══════════════════════════════════════════════════════════════
+model Bicicleta {
+  id            Int       @id @default(autoincrement())
+  clienteId     Int
+  marca         String
+  modelo        String?
+  color         String?
+  numeroSerie   String?
+  tamano        String?
+  anio          Int?
+  tipo          String    @default("Carretera") // BiciInfantil, XC, Trail, Enduro, Descens, Passeig, Gravel, Carretera, Triatlo, EBikePasseig, EBikeXC, EBikeEnduro, EBikeGravel, EBikeCarretera
+  observaciones String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  cliente       Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  ordenes       OrdenReparacion[]
+
+  @@index([clienteId])
+  @@index([numeroSerie])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ARTÍCULOS (Catálogo de materiales)
+// ═══════════════════════════════════════════════════════════════
+model Articulo {
+  id            Int       @id @default(autoincrement())
+  referencia    String    @unique
+  descripcion   String
+  precioCompra  Float     @default(0)
+  precioVenta   Float     @default(0)
+  iva           Float     @default(21) // 21, 10, 4, 0
+  stock         Float     @default(0)
+  familia       String?
+  proveedor     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  ordenes       OrdenMaterial[]
+
+  @@index([referencia])
+  @@index([descripcion])
+  @@index([familia])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ÓRDENES DE REPARACIÓN
+// ═══════════════════════════════════════════════════════════════
+model OrdenReparacion {
+  id                Int       @id @default(autoincrement())
+  numeroOrden       String    @unique
+  clienteId         Int
+  bicicletaId       Int?
+  fechaEntrada      DateTime  @default(now())
+  fechaPrevista     DateTime?
+  estado            String    @default("Presupuesto") // Presupuesto, Pendiente, EnReparacion, EsperandoMaterial, Finalizada, Entregada
+  descripcion       String?   // Trabajos realizados
+  diagnostico       String?
+  recomendaciones   String?
+  observaciones     String?   // Observaciones internas (no se imprimen)
+  problema          String?   // Indicaciones del cliente sobre lo que le pasa a la bicicleta
+  garantia          Boolean   @default(false) // Si la reparación está en garantía
+  tipoReparacion    String?   // Preferente, Programada, Urgente, NoProgramada
+  formaPago         String?   // Efectivo, Tarjeta, Transferencia, Financiado (interno, no se imprime)
+  estadoPago        String?   // Pagado, Pendiente, Parcial (interno, no se imprime)
+  mecanicoId        Int?      // Mecánico asignado
+  seguimiento       String?   // Seguimiento interno: cliente avisado, falta un dato o una pieza...
+  clienteAvisado    Boolean   @default(false) // Casilla rápida: cliente avisado
+
+  // Cálculos
+  subtotalMateriales Float    @default(0)
+  subtotalManoObra   Float    @default(0)
+  descuentoGlobal   Float    @default(0) // Porcentaje
+  baseImponible     Float    @default(0)
+  iva               Float    @default(0)
+  total             Float    @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relaciones
+  cliente           Cliente   @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  bicicleta         Bicicleta? @relation(fields: [bicicletaId], references: [id], onDelete: Restrict)
+  mecanico          Mecanico? @relation(fields: [mecanicoId], references: [id], onDelete: Restrict)
+  materiales        OrdenMaterial[]
+  manoObra          OrdenManoObra[]
+
+  @@index([numeroOrden])
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fechaEntrada])
+  @@index([mecanicoId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MATERIALES DE LA ORDEN (Línea de materiales)
+// ═══════════════════════════════════════════════════════════════
+model OrdenMaterial {
+  id            Int       @id @default(autoincrement())
+  ordenId       Int
+  articuloId    Int?
+  referencia    String
+  descripcion   String
+  cantidad      Float     @default(1)
+  precioUnitario Float    @default(0)
+  descuento     Float     @default(0) // Porcentaje
+  precioNeto    Float     @default(0)
+  iva           Float     @default(21)
+  importeTotal  Float     @default(0)
+
+  // Relaciones
+  orden         OrdenReparacion @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  articulo      Articulo?  @relation(fields: [articuloId], references: [id], onDelete: SetNull)
+
+  @@index([ordenId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MANO DE OBRA DE LA ORDEN
+// ═══════════════════════════════════════════════════════════════
+model OrdenManoObra {
+  id            Int       @id @default(autoincrement())
+  ordenId       Int
+  codigoOp      String
+  descripcion   String
+  tiempo        Float     @default(0) // En horas
+  precioHora    Float     @default(0)
+  importe       Float     @default(0)
+
+  // Relaciones
+  orden         OrdenReparacion @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  @@index([ordenId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OPERACIONES DE MANO DE OBRA (Catálogo predefinido)
+// ═══════════════════════════════════════════════════════════════
+model OperacionManoObra {
+  id            Int       @id @default(autoincrement())
+  codigo        String    @unique
+  descripcion   String
+  tiempoDefecto Float     @default(0.5) // Horas por defecto
+  precioHoraDefecto Float @default(30)
+  activo        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COPIAS DE SEGURIDAD
+// ═══════════════════════════════════════════════════════════════
+model Backup {
+  id            Int       @id @default(autoincrement())
+  filename      String
+  size          Int
+  tipo          String    @default("auto") // auto, manual
+  createdAt     DateTime  @default(now())
+}
