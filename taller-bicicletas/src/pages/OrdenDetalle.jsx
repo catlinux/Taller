@@ -332,7 +332,7 @@ export default function OrdenDetalle() {
       {errorAccion && <p role="alert" className="mb-5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <Tarjeta titulo="Cabecera">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm text-slate-300">N.º de orden
@@ -368,28 +368,17 @@ export default function OrdenDetalle() {
             </div>
           </Tarjeta>
 
-          <Tarjeta titulo="Cliente" descripcion="Busca por nº, nombre, DNI o teléfono, o da de alta uno nuevo.">
+          <Tarjeta titulo="Cliente" descripcion="Busca por nº, nombre, DNI o teléfono, o da de alta uno nuevo." className="flex-1">
             <ClienteSelector cliente={cliente} onChange={cambiarCliente} token={token} />
           </Tarjeta>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <Tarjeta titulo="Bicicleta" descripcion="Material entregado por el cliente.">
-              <BicicletaSelector cliente={cliente} bicicleta={bicicleta} onChange={cambiarBicicleta} token={token} />
-            </Tarjeta>
-
-            <Tarjeta titulo="Accesorios bicicleta" descripcion="Accesorios entregados con la bici; uno por línea.">
-              <textarea rows={5} value={form.accesorios} onChange={(event) => actualizar('accesorios', event.target.value)} className={inputClass} />
-            </Tarjeta>
-          </div>
         </div>
 
-
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <Tarjeta titulo="Problema" descripcion="Lo que el cliente dice que le pasa a la bici.">
             <textarea rows={5} value={form.problema} onChange={(event) => actualizar('problema', event.target.value)} className={inputClass} />
           </Tarjeta>
 
-          <Tarjeta titulo="Descripción de los trabajos">
+          <Tarjeta titulo="Descripción de los trabajos" className="flex-1">
             <div className="space-y-4">
               <label className="block text-sm text-slate-300">Trabajos realizados
                 <textarea rows={4} value={form.descripcion} onChange={(event) => actualizar('descripcion', event.target.value)} className={inputClass} />
@@ -401,6 +390,16 @@ export default function OrdenDetalle() {
                 <textarea rows={3} value={form.recomendaciones} onChange={(event) => actualizar('recomendaciones', event.target.value)} className={inputClass} />
               </label>
             </div>
+          </Tarjeta>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:col-span-full">
+          <Tarjeta titulo="Bicicleta" descripcion="Material entregado por el cliente.">
+            <BicicletaSelector cliente={cliente} bicicleta={bicicleta} onChange={cambiarBicicleta} token={token} />
+          </Tarjeta>
+
+          <Tarjeta titulo="Accesorios bicicleta" descripcion="Accesorios entregados con la bici; uno por línea.">
+            <textarea rows={5} value={form.accesorios} onChange={(event) => actualizar('accesorios', event.target.value)} className={inputClass} />
           </Tarjeta>
         </div>
 

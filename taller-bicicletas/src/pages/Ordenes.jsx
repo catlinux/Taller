@@ -70,38 +70,47 @@ export default function Ordenes() {
   const ordenEstados = ESTADOS.map((opcion) => opcion.valor)
 
   const columnas = [
-    { clave: 'numeroOrden', titulo: 'Nº orden', ancho: '130px', valor: (o) => o.numeroOrden, clase: 'font-medium text-white' },
+    { clave: 'numeroOrden', titulo: 'Nº orden', ancho: '130px', valor: (o) => o.numeroOrden, clase: 'font-medium text-white whitespace-nowrap' },
     {
       clave: 'fechaEntrada', titulo: 'Entrada', ancho: '110px', tipo: 'fecha',
       valor: (o) => o.fechaEntrada,
-      render: (o) => <span className="block truncate text-slate-400">{formatearFecha(o.fechaEntrada)}</span>,
+      render: (o) => <span className="block whitespace-nowrap text-slate-400">{formatearFecha(o.fechaEntrada)}</span>,
     },
     {
       clave: 'fechaPrevista', titulo: 'Prevista', ancho: '110px', tipo: 'fecha',
       valor: (o) => o.fechaPrevista,
-      render: (o) => <span className={`block truncate ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
+      render: (o) => <span className={`block whitespace-nowrap ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
     },
     {
-      clave: 'cliente', titulo: 'Cliente', ancho: '22%',
+      clave: 'cliente', titulo: 'Cliente', ancho: '24%',
       valor: (o) => o.cliente?.nombre,
       render: (o) => (
-        <div className="truncate">
-          <span className="block truncate text-slate-300">#{o.cliente?.numeroCliente}</span>
-          <span className="block truncate text-slate-400">{o.cliente?.nombre}</span>
+        <div className="whitespace-nowrap" title={`#${o.cliente?.numeroCliente ?? ''} ${o.cliente?.nombre ?? ''}`.trim()}>
+          <span className="block text-slate-300">#{o.cliente?.numeroCliente}</span>
+          <span className="block text-slate-400">{o.cliente?.nombre}</span>
         </div>
       ),
     },
-    { clave: 'marca', titulo: 'Marca', ancho: '12%', valor: (o) => o.bicicleta?.marca, clase: 'text-slate-400' },
-    { clave: 'modelo', titulo: 'Modelo', ancho: '14%', valor: (o) => o.bicicleta?.modelo, clase: 'text-slate-400' },
+    {
+      clave: 'marca', titulo: 'Marca', ancho: '12%', valor: (o) => o.bicicleta?.marca,
+      render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.bicicleta?.marca || ''}>{o.bicicleta?.marca || '—'}</span>,
+    },
+    {
+      clave: 'modelo', titulo: 'Modelo', ancho: '16%', valor: (o) => o.bicicleta?.modelo,
+      render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.bicicleta?.modelo || ''}>{o.bicicleta?.modelo || '—'}</span>,
+    },
     {
       clave: 'tipoReparacion', titulo: 'Tipo', ancho: '130px',
       valor: (o) => etiquetaTipoCorta(o.tipoReparacion),
       render: (o) => {
         const destacado = o.tipoReparacion === 'Urgente' || o.tipoReparacion === 'Preferente'
-        return <span className={`badge ${destacado ? 'bg-naranja-500/10 text-naranja-300' : 'bg-antracita-700 text-slate-300'}`}>{etiquetaTipoCorta(o.tipoReparacion)}</span>
+        return <span className={`badge whitespace-nowrap ${destacado ? 'bg-naranja-500/10 text-naranja-300' : 'bg-antracita-700 text-slate-300'}`}>{etiquetaTipoCorta(o.tipoReparacion)}</span>
       },
     },
-    { clave: 'mecanico', titulo: 'Mecánico', ancho: '130px', valor: (o) => o.mecanico?.nombre, clase: 'text-slate-400' },
+    {
+      clave: 'mecanico', titulo: 'Mecánico', ancho: '150px', valor: (o) => o.mecanico?.nombre,
+      render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.mecanico?.nombre || ''}>{o.mecanico?.nombre || '—'}</span>,
+    },
     {
       clave: 'estado', titulo: 'Estado', ancho: '150px', tipo: 'numero',
       valor: (o) => ordenEstados.indexOf(o.estado),
@@ -115,7 +124,7 @@ export default function Ordenes() {
     {
       clave: 'total', titulo: 'Total', ancho: '110px', tipo: 'numero', alinear: 'der',
       valor: (o) => o.total,
-      render: (o) => <span className="block truncate font-medium text-white">{formatearEuros(o.total)}</span>,
+      render: (o) => <span className="block whitespace-nowrap font-medium text-white">{formatearEuros(o.total)}</span>,
     },
   ]
 
