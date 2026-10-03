@@ -191,13 +191,13 @@ export default function Ordenes() {
         </div>
       </div>
 
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <label className="relative block w-full lg:max-w-md">
+      <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <label className="relative block w-full xl:max-w-xs xl:flex-none">
           <span className="sr-only">Buscar órdenes</span>
           <IconBuscar size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nº de orden, cliente o bici…" className="input pl-10" />
         </label>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 xl:flex-nowrap xl:shrink-0">
           <label className="text-sm text-slate-300">
             <span className="sr-only">Estado</span>
             <select value={estado} onChange={(event) => setEstado(event.target.value)} className={selectClass}>
