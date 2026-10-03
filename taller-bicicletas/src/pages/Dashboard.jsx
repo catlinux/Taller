@@ -50,55 +50,30 @@ function iniciales(nombre) {
 // Tarjeta de indicador de la fila superior.
 function Indicador({ etiqueta, valor, icono: Icono, tono = 'azul' }) {
   return (
-    <article className="card card-hover p-5">
-      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${TONOS[tono]}`}>
-        <Icono size={20} />
+    <article className="card card-hover p-3 flex items-center gap-4">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${TONOS[tono]}`}>
+        <Icono size={18} />
       </div>
-      <p className="text-3xl font-bold tabular-nums text-white">{valor}</p>
-      <p className="mt-1 text-sm text-slate-400">{etiqueta}</p>
+      <div>
+        <p className="text-xl font-bold tabular-nums text-white leading-none">{valor}</p>
+        <p className="text-[11px] uppercase tracking-wider text-slate-500">{etiqueta}</p>
+      </div>
     </article>
   )
 }
 
 
 // Tarjeta de una orden dentro de una columna del tablero.
-function TarjetaOrden({ orden, onAbrir }) {
-  const vencida = fechaPrevistaVencida(orden)
-  const tipoResaltado = orden.tipoReparacion === 'Urgente' || orden.tipoReparacion === 'Preferente'
-  const bici = orden.bicicleta ? `${orden.bicicleta.marca}${orden.bicicleta.modelo ? ` ${orden.bicicleta.modelo}` : ''}` : '—'
-  const cliente = `${orden.cliente?.nombre || ''}${orden.cliente?.apellidos ? ` ${orden.cliente.apellidos}` : ''}`.trim() || '—'
-  const mecanico = orden.mecanico?.nombre || 'Sin mecánico'
-  return (
-    <button type="button" onClick={onAbrir} className="card card-hover w-full p-3 text-left">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-white">{orden.numeroOrden}</span>
-        {orden.garantia && <span className="badge bg-naranja-500/10 text-naranja-300">Garantía</span>}
-      </div>
-      <p className="mt-1.5 truncate text-sm font-medium text-slate-200">{cliente}</p>
-      <p className="truncate text-xs text-slate-500">{bici}</p>
-      <div className="mt-2 flex items-center gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-azul-400 to-azul-600 text-[10px] font-semibold text-white mantener-blanco">
-          {iniciales(orden.mecanico?.nombre) || '—'}
-        </span>
-        <span className="truncate text-xs text-slate-400">{mecanico}</span>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-        <span className={`flex items-center gap-1 ${vencida ? 'font-medium text-naranja-400' : 'text-slate-500'}`}>
-          <IconReloj size={14} />
-          {formatearFecha(orden.fechaPrevista)}
-        </span>
-        {tipoResaltado && <span className="font-medium text-naranja-400">{etiquetaTipoCorta(orden.tipoReparacion)}</span>}
-      </div>
-      {orden.estado === 'Finalizada' && !orden.clienteAvisado && (
-        <span className="badge mt-2 bg-naranja-500/10 text-naranja-300">Sin avisar</span>
-      )}
-    </button>
-  )
-}
+
+
+import { useState, useMemo } from 'react'
 
 export default function Dashboard() {
   const { token } = useAuth()
   const navigate = useNavigate()
+  const [filtroEstado, setFiltroEstado] = useState('Todos')
+  const [busqueda, setBusqueda] = useState('')
+
   const { data, isLoading, isError } = useQuery(['dashboard', token], () => apiGet('/api/dashboard', token), {
     enabled: Boolean(token),
     refetchInterval: 60000,
@@ -109,13 +84,31 @@ export default function Dashboard() {
   const vencidas = data?.vencidas ?? 0
   const sinAvisar = data?.finalizadasSinAvisar ?? 0
 
+  const todasLasOrdenes = useMemo(() => {
+    if (!data?.columnas) return []
+    return Object.values(data.columnas).flat()
+  }, [data])
+
+  const ordenesFiltradas = useMemo(() => {
+    return todasLasOrdenes.filter((o) => {
+      const matchEstado = filtroEstado === 'Todos' || o.estado === filtroEstado
+      const term = busqueda.toLowerCase()
+      const matchBusqueda = 
+        o.numeroOrden.toLowerCase().includes(term) ||
+        (o.cliente?.nombre || '').toLowerCase().includes(term) ||
+        (o.cliente?.apellidos || '').toLowerCase().includes(term) ||
+        (o.bicicleta?.modelo || '').toLowerCase().includes(term)
+      return matchEstado && matchBusqueda
+    })
+  }, [todasLasOrdenes, filtroEstado, busqueda])
+
   return (
     <section>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-azul-400">Resumen</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">Taller</h1>
-          <p className="mt-2 text-slate-400">Órdenes de reparación por estado.</p>
+          <p className="mt-2 text-slate-400">Gestión centralizada de órdenes de reparación.</p>
         </div>
         <button onClick={() => navigate('/ordenes/nueva')} className="btn-primary">
           <IconMas size={18} />
@@ -123,7 +116,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {isLoading ? <p className="text-slate-400">Cargando el tablero…</p> : isError ? <p role="alert" className="text-peligro">No se pudo cargar el tablero. Comprueba la conexión con el servidor.</p> : (
+      {isLoading ? <p className="text-slate-400">Cargando el tablero…</p> : isError ? <p role="alert" className="text-peligro">Error al cargar los datos.</p> : (
         <>
           <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <Indicador etiqueta="En el taller" valor={enTaller} icono={IconTaller} />
@@ -133,34 +126,98 @@ export default function Dashboard() {
             <Indicador etiqueta="Entregadas hoy" valor={data?.entregadasHoy ?? 0} icono={IconCheck} tono="verde" />
           </div>
 
-          <div className="overflow-x-auto pb-4 xl:overflow-visible xl:pb-0">
-            <div className="flex min-w-max gap-4 xl:grid xl:w-full xl:min-w-0 xl:grid-cols-5">
-              {ESTADOS_TABLERO.map((estado) => {
-                const ordenes = data?.columnas?.[estado] ?? []
-                return (
-                  <div key={estado} className="w-[260px] shrink-0 rounded-2xl border border-antracita-800 bg-antracita-900/60 p-3 xl:w-auto xl:shrink">
-                    <div className="mb-3 flex items-center justify-between px-1">
-                      <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-                        <span className={`h-2 w-2 rounded-full ${PUNTO_ESTADO[estado]}`} />
-                        {estadoInfo(estado).etiqueta}
-                      </h2>
-                      <span className="badge bg-antracita-800 text-slate-300">{conteo[estado] ?? 0}</span>
-                    </div>
-                    <div className="space-y-2.5">
-                      {ordenes.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-antracita-700 px-3 py-8 text-center">
-                          <IconOrdenes size={22} className="text-slate-600" />
-                          <p className="text-xs text-slate-500">Sin órdenes</p>
-                        </div>
-                      ) : (
-                        ordenes.map((orden) => (
-                          <TarjetaOrden key={orden.id} orden={orden} onAbrir={() => navigate(`/ordenes/${orden.id}`)} />
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+          <div className="card overflow-hidden">
+            <div className="p-4 border-b border-antracita-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <button 
+                  onClick={() => setFiltroEstado('Todos')} 
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${filtroEstado === 'Todos' ? 'bg-azul-500 text-white' : 'bg-antracita-800 text-slate-400 hover:bg-antracita-700'}`}
+                >
+                  Todos
+                </button>
+                {ESTADOS_TABLERO.map(e => (
+                  <button 
+                    key={e} 
+                    onClick={() => setFiltroEstado(e)} 
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition ${filtroEstado === e ? 'bg-azul-500 text-white' : 'bg-antracita-800 text-slate-400 hover:bg-antracita-700'}`}
+                  >
+                    {estadoInfo(e).etiqueta}
+                  </button>
+                ))}
+              </div>
+              <div className="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  placeholder="Buscar cliente, bici..."
+                  className="input pl-9 py-2 text-xs"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                />
+                <IconTaller size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-antracita-900/50 text-slate-500 text-[10px] uppercase tracking-widest font-semibold">
+                    <th className="px-4 py-3">ID Orden</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Vehículo</th>
+                    <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">Fecha Límite</th>
+                    <th className="px-4 py-3 text-right">Prioridad</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-antracita-800">
+                  {ordenesFiltradas.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-4 py-12 text-center text-slate-500 text-sm">
+                        No se encontraron órdenes que coincidan con la búsqueda.
+                      </td>
+                    </tr>
+                  ) : (
+                    ordenesFiltradas.map((orden) => {
+                      const vencida = fechaPrevistaVencida(orden)
+                      const esUrgente = orden.tipoReparacion === 'Urgente'
+                      const esPreferente = orden.tipoReparacion === 'Preferente'
+                      const bici = orden.bicicleta ? `${orden.bicicleta.marca} ${orden.bicicleta.modelo || ''}` : '—'
+                      const cliente = `${orden.cliente?.nombre || ''} ${orden.cliente?.apellidos || ''}`.trim() || '—'
+                      
+                      return (
+                        <tr 
+                          key={orden.id} 
+                          onClick={() => navigate(`/ordenes/${orden.id}`)} 
+                          className="group cursor-pointer hover:bg-antracita-800/40 transition"
+                        >
+                          <td className="px-4 py-3 text-xs font-semibold text-slate-400">{orden.numeroOrden}</td>
+                          <td className="px-4 py-3 text-sm font-bold text-white">{cliente}</td>
+                          <td className="px-4 py-3 text-xs text-slate-400">{bici}</td>
+                          <td className="px-4 py-3">
+                            <span className={`badge px-2 py-0.5 text-[10px] font-medium ${ 
+                              orden.estado === 'Finalizada' ? 'bg-ok/10 text-ok' : 
+                              orden.estado === 'EsperandoMaterial' ? 'bg-naranja-500/10 text-naranja-400' : 
+                              orden.estado === 'Presupuesto' ? 'bg-slate-500/10 text-slate-400' : 'bg-azul-500/10 text-azul-400'
+                            }`}>
+                              {estadoInfo(orden.estado).etiqueta}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-3 text-xs ${vencida ? 'text-naranja-400 font-bold' : 'text-slate-500'}`}>
+                            <div className="flex items-center gap-1">
+                              {vencida && <IconAviso size={12} />}
+                              {formatearFecha(orden.fechaPrevista)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {esUrgente && <span className="text-[10px] font-bold uppercase text-rose-500">Urgente</span>}
+                            {esPreferente && <span className="text-[10px] font-bold uppercase text-amber-400">Preferente</span>}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>

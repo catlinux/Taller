@@ -168,12 +168,12 @@ export default function IntroBienvenida({ nombre, onTerminar }) {
       }, 800)
       programar(terminar, 1600)
     } else {
-      programar(() => setFaseContadores(true), 1600)
+      programar(() => setFaseContadores(true), 4000)
       programar(() => {
         saliendoRef.current = true
         setSaliendo(true)
-      }, 3400)
-      programar(terminar, 4200)
+      }, 6400)
+      programar(terminar, 8000)
     }
     const timers = timersRef.current
     return () => {
@@ -222,7 +222,7 @@ export default function IntroBienvenida({ nombre, onTerminar }) {
   const valor = (clave) => (metricas ? contadores[clave] : '—')
   const vencidasNaranja = Boolean(metricas && metricas.vencidas > 0)
   const clasesSalida = saliendo ? (salidaRapida ? 'intro-salida-rapida' : 'intro-salida') : ''
-  const retardoSubtitulo = 1600 + palabras.length * 80 + 160
+  const retardoSubtitulo = 4000 + palabras.length * 80 + 160
 
   const tarjetas = [
     { clave: 'taller', etiqueta: 'En el taller', naranja: false },
@@ -283,7 +283,7 @@ export default function IntroBienvenida({ nombre, onTerminar }) {
         <div>
           <h2 className="intro-saludo text-2xl font-bold tracking-tight text-white sm:text-4xl" aria-hidden="true">
             {palabras.map((palabra, indice) => (
-              <span key={indice} className="intro-palabra intro-anim mr-[0.28em] inline-block" style={{ animationDelay: `${1600 + indice * 80}ms` }}>
+              <span key={indice} className="intro-palabra intro-anim mr-[0.28em] inline-block" style={{ animationDelay: `${4000 + indice * 80}ms` }}>
                 {palabra}
               </span>
             ))}
@@ -299,7 +299,7 @@ export default function IntroBienvenida({ nombre, onTerminar }) {
               key={tarjeta.clave}
               className="intro-tarjeta intro-anim min-w-[120px] rounded-xl border border-antracita-700 bg-antracita-800/60 px-5 py-3"
               aria-hidden="true"
-              style={{ animationDelay: `${1900 + indice * 120}ms` }}
+              style={{ animationDelay: `${4300 + indice * 120}ms` }}
             >
               <p className={`text-2xl font-bold tabular-nums ${tarjeta.naranja ? 'text-naranja-400' : 'text-white'}`}>{valor(tarjeta.clave)}</p>
               <p className="mt-0.5 text-xs text-slate-400">{tarjeta.etiqueta}</p>
