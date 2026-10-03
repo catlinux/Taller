@@ -77,6 +77,11 @@ export default function Ordenes() {
       render: (o) => <span className="block truncate text-slate-400">{formatearFecha(o.fechaEntrada)}</span>,
     },
     {
+      clave: 'fechaPrevista', titulo: 'Prevista', ancho: '110px', tipo: 'fecha',
+      valor: (o) => o.fechaPrevista,
+      render: (o) => <span className={`block truncate ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
+    },
+    {
       clave: 'cliente', titulo: 'Cliente', ancho: '22%',
       valor: (o) => o.cliente?.nombre,
       render: (o) => (
@@ -86,10 +91,8 @@ export default function Ordenes() {
         </div>
       ),
     },
-    {
-      clave: 'bicicleta', titulo: 'Bici', ancho: '18%', clase: 'text-slate-400',
-      valor: (o) => (o.bicicleta ? `${o.bicicleta.marca}${o.bicicleta.modelo ? ` ${o.bicicleta.modelo}` : ''}` : ''),
-    },
+    { clave: 'marca', titulo: 'Marca', ancho: '12%', valor: (o) => o.bicicleta?.marca, clase: 'text-slate-400' },
+    { clave: 'modelo', titulo: 'Modelo', ancho: '14%', valor: (o) => o.bicicleta?.modelo, clase: 'text-slate-400' },
     {
       clave: 'tipoReparacion', titulo: 'Tipo', ancho: '130px',
       valor: (o) => etiquetaTipoCorta(o.tipoReparacion),
@@ -108,11 +111,6 @@ export default function Ordenes() {
       clave: 'formaPago', titulo: 'Pago', ancho: '120px',
       valor: (o) => o.formaPago || '',
       render: (o) => (o.formaPago ? <PagoBadge formaPago={o.formaPago} /> : <span className="text-slate-500">—</span>),
-    },
-    {
-      clave: 'fechaPrevista', titulo: 'Prevista', ancho: '110px', tipo: 'fecha',
-      valor: (o) => o.fechaPrevista,
-      render: (o) => <span className={`block truncate ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
     },
     {
       clave: 'total', titulo: 'Total', ancho: '110px', tipo: 'numero', alinear: 'der',

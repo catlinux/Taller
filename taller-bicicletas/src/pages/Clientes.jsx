@@ -82,10 +82,10 @@ export default function Clientes() {
   }
 
   const columnas = [
-    { clave: 'numero', titulo: 'N.º', ancho: '88px', alinear: 'izq', tipo: 'numero', valor: (c) => c.numeroCliente, clase: 'text-slate-400' },
+    { clave: 'numero', titulo: 'Nº', ancho: '88px', alinear: 'izq', tipo: 'numero', valor: (c) => c.numeroCliente, clase: 'text-slate-400' },
     {
       clave: 'cliente',
-      titulo: 'Cliente',
+      titulo: 'Nombre cliente',
       ancho: '30%',
       valor: (c) => `${c.nombre ?? ''} ${c.apellidos ?? ''}`.trim(),
       render: (c) => (
@@ -94,9 +94,10 @@ export default function Clientes() {
         </Link>
       ),
     },
-    { clave: 'email', titulo: 'Email', ancho: '22%', valor: (c) => c.email, clase: 'text-slate-400' },
     { clave: 'telefono', titulo: 'Teléfono', ancho: '140px', valor: (c) => c.telefono, clase: 'text-slate-400' },
-    { clave: 'poblacion', titulo: 'Población', ancho: '16%', valor: (c) => c.poblacion, clase: 'text-slate-400' },
+    { clave: 'direccion', titulo: 'Dirección', ancho: '24%', valor: (c) => c.direccion, clase: 'text-slate-400' },
+    { clave: 'codigoPostal', titulo: 'Código postal', ancho: '120px', valor: (c) => c.codigoPostal, clase: 'text-slate-400' },
+    { clave: 'email', titulo: 'Email', ancho: '22%', valor: (c) => c.email, clase: 'text-slate-400' },
   ]
 
   const acciones = (cliente) => (
