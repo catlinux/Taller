@@ -158,6 +158,7 @@ model OrdenReparacion {
   diagnostico       String?
   recomendaciones   String?
   observaciones     String?   // Observaciones internas (no se imprimen)
+  accesorios        String?   // Accesorios entregados con la bicicleta
   problema          String?   // Indicaciones del cliente sobre lo que le pasa a la bicicleta
   garantia          Boolean   @default(false) // Si la reparación está en garantía
   tipoReparacion    String?   // Preferente, Programada, Urgente, NoProgramada

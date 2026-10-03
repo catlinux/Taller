@@ -23,7 +23,7 @@ export const ESTADOS_ORDEN = [
 const TIPOS_REPARACION = ['Preferente', 'Programada', 'Urgente', 'NoProgramada']
 
 // Campos de texto opcionales que acepta el modelo OrdenReparacion
-const CAMPOS_TEXTO_OPCIONALES = ['problema', 'descripcion', 'diagnostico', 'recomendaciones', 'observaciones', 'seguimiento']
+const CAMPOS_TEXTO_OPCIONALES = ['problema', 'descripcion', 'diagnostico', 'recomendaciones', 'observaciones', 'seguimiento', 'accesorios']
 
 // Tipo de IVA aplicado a la mano de obra (el modelo OrdenManoObra no guarda un IVA por línea)
 const IVA_MANO_OBRA = 21
