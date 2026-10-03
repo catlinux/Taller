@@ -57,6 +57,7 @@ function estadoInicialForm() {
     descripcion: '',
     diagnostico: '',
     recomendaciones: '',
+    accesorios: '',
     formaPago: 'Pendiente',
     observaciones: '',
     clienteAvisado: false,
@@ -155,6 +156,7 @@ export default function OrdenDetalle() {
       descripcion: orden.descripcion ?? '',
       diagnostico: orden.diagnostico ?? '',
       recomendaciones: orden.recomendaciones ?? '',
+      accesorios: orden.accesorios ?? '',
       formaPago: orden.formaPago ?? '',
       observaciones: orden.observaciones ?? '',
       clienteAvisado: Boolean(orden.clienteAvisado),
@@ -219,6 +221,7 @@ export default function OrdenDetalle() {
       descripcion: form.descripcion,
       diagnostico: form.diagnostico,
       recomendaciones: form.recomendaciones,
+      accesorios: form.accesorios,
       formaPago: form.formaPago || null,
       observaciones: form.observaciones,
       clienteAvisado: form.clienteAvisado,
@@ -369,9 +372,15 @@ export default function OrdenDetalle() {
             <ClienteSelector cliente={cliente} onChange={cambiarCliente} token={token} />
           </Tarjeta>
 
-          <Tarjeta titulo="Bicicleta" descripcion="Material entregado por el cliente.">
-            <BicicletaSelector cliente={cliente} bicicleta={bicicleta} onChange={cambiarBicicleta} token={token} />
-          </Tarjeta>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Tarjeta titulo="Bicicleta" descripcion="Material entregado por el cliente.">
+              <BicicletaSelector cliente={cliente} bicicleta={bicicleta} onChange={cambiarBicicleta} token={token} />
+            </Tarjeta>
+
+            <Tarjeta titulo="Accesorios bicicleta" descripcion="Accesorios entregados con la bici; uno por línea.">
+              <textarea rows={5} value={form.accesorios} onChange={(event) => actualizar('accesorios', event.target.value)} className={inputClass} />
+            </Tarjeta>
+          </div>
         </div>
 
 
