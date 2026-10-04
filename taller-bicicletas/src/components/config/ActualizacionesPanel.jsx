@@ -109,6 +109,7 @@ export default function ActualizacionesPanel() {
 
         <p className="text-xs text-slate-500">
           Última comprobación: {formatearFechaHora(data?.ultimaComprobacion)}.
+          {data?.remoto?.corto ? ` Última versión en el repositorio (origin/${data.version?.rama ?? 'main'}): ${data.remoto.corto}.` : ''}
           {data?.ultimaActualizacion?.fecha ? ` Última actualización aplicada: ${formatearFechaHora(data.ultimaActualizacion.fecha)}.` : ''}
         </p>
 
