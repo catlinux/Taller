@@ -33,7 +33,7 @@ bash deploy/install.sh --demo      # sin --demo para una base vacía
 ```
 
 1. `install.sh` crea el `.env` con un `JWT_SECRET` aleatorio, instala dependencias, crea la base SQLite, carga los datos y compila el front.
-2. Servicio: copia `deploy/taller.service` a `/etc/systemd/system/`, ajusta usuario y ruta, y `systemctl enable --now taller`.
+2. Servicio: `bash taller-bicicletas/deploy/instalar-servicio.sh` genera e instala el servicio systemd con la carpeta, el usuario y el `node` reales de este servidor (`deploy/taller.service` es solo una plantilla con valores de ejemplo: `/opt/taller` y el usuario `taller`; si la copias a mano sin ajustarla, el servicio no arranca). Añade `--dry-run` para ver el resultado sin instalar.
 3. Apache: copia `deploy/taller.conf` a `sites-available`, cambia `taller.midominio.com`, `a2enmod proxy proxy_http headers rewrite ssl`, `a2ensite taller`, `certbot --apache -d <subdominio>` y recarga Apache.
 
 Requisitos: Node 20+, Apache 2.4. Actualizar: `bash taller-bicicletas/deploy/update.sh` (ver más abajo).
