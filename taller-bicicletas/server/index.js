@@ -14,13 +14,15 @@ import dashboardRoutes from './routes/dashboard.js'
 import usuariosRoutes from './routes/usuarios.js'
 import mecanicosRoutes from './routes/mecanicos.js'
 import operacionesRoutes from './routes/operaciones.js'
-import ajustesRoutes from './routes/ajustes.js'
+import ajustesRoutes, { obtenerAjustes } from './routes/ajustes.js'
 import modoRoutes from './routes/modo.js'
+import actualizacionesRoutes from './routes/actualizaciones.js'
 import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
 import { migrarPagos } from './lib/pagos.js'
 import { rellenarSinStock } from './lib/stock.js'
+import { ejecutarComprobacion } from './lib/actualizaciones.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -65,6 +67,7 @@ app.use('/api/operaciones', operacionesRoutes)
 app.use('/api/ajustes', ajustesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/modo', modoRoutes)
+app.use('/api/actualizaciones', actualizacionesRoutes)
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {
@@ -117,6 +120,37 @@ const programarBackupAutomatico = () => {
 }
 programarBackupAutomatico()
 setInterval(programarBackupAutomatico, INTERVALO_BACKUP_MS).unref()
+
+// Comprobación periódica de actualizaciones: solo comprueba y avisa (git fetch y
+// comparación), nunca aplica nada. Se hace una 60 s después de arrancar y luego
+// cada `actualizacionesHoras` horas (por defecto 6). El ajuste se relee en cada
+// ciclo para que los cambios en Configuración surtan efecto sin reiniciar.
+const RETRASO_COMPROBACION_MS = 60 * 1000
+const HORAS_COMPROBACION_DEFECTO = 6
+
+async function comprobarActualizacionesProgramada() {
+  try {
+    const { actualizacionesActivas, actualizacionesHoras } = await obtenerAjustes()
+    if (actualizacionesActivas === true) {
+      await ejecutarComprobacion()
+    }
+    const horas = Number(actualizacionesHoras)
+    return (horas >= 1 ? horas : HORAS_COMPROBACION_DEFECTO) * 60 * 60 * 1000
+  } catch (error) {
+    console.error('Error al comprobar actualizaciones:', error?.message || error)
+    return HORAS_COMPROBACION_DEFECTO * 60 * 60 * 1000
+  }
+}
+
+function programarComprobacionActualizaciones(demora) {
+  const temporizador = setTimeout(async () => {
+    const siguiente = await comprobarActualizacionesProgramada()
+    programarComprobacionActualizaciones(siguiente)
+  }, demora)
+  if (typeof temporizador.unref === 'function') temporizador.unref()
+}
+
+programarComprobacionActualizaciones(RETRASO_COMPROBACION_MS)
 
 // Aviso al arrancar si algún usuario conserva la contraseña de ejemplo del seed.
 const CONTRASENAS_EJEMPLO = { admin: 'admin123', mecanico: 'mecanico123' }

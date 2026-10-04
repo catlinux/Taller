@@ -8,6 +8,7 @@ import PantallaBloqueo from './PantallaBloqueo.jsx'
 import ModoBadge from './ModoBadge.jsx'
 import ModoColorBoton from './ModoColorBoton.jsx'
 import PinModal from './PinModal.jsx'
+import AvisoActualizacion from './AvisoActualizacion.jsx'
 import {
   IconTaller,
   IconOrdenes,
@@ -271,6 +272,7 @@ export default function Layout() {
             </div>
           </div>
         </header>
+        {user?.rol === 'admin' && <AvisoActualizacion />}
         <main className="flex-1 p-4 md:p-8">
           <Outlet />
         </main>

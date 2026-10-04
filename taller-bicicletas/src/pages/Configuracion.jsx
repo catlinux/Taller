@@ -6,6 +6,7 @@ import AparienciaPanel from '../components/config/AparienciaPanel.jsx'
 import TallerPanel from '../components/config/TallerPanel.jsx'
 import DatosPanel from '../components/config/DatosPanel.jsx'
 import SeguridadPanel from '../components/config/SeguridadPanel.jsx'
+import ActualizacionesPanel from '../components/config/ActualizacionesPanel.jsx'
 import Empresa from './Empresa.jsx'
 import Operaciones from './Operaciones.jsx'
 import Usuarios from './Usuarios.jsx'
@@ -20,6 +21,7 @@ import {
   IconPaleta,
   IconTaller,
   IconSeguridad,
+  IconActualizar,
 } from '../components/Icons.jsx'
 
 // Definición de las pestañas de Configuración. `soloAdmin` restringe su
@@ -39,6 +41,9 @@ const PESTANAS = [
   { id: 'taller', etiqueta: 'Taller', Icono: IconTaller, soloAdmin: true, contenido: <TallerPanel /> },
   { id: 'datos', etiqueta: 'Datos', Icono: IconTabla, soloAdmin: true, contenido: <DatosPanel /> },
   { id: 'sesion', etiqueta: 'Sesión y seguridad', Icono: IconSeguridad, soloAdmin: true, contenido: <SeguridadPanel /> },
+  {
+    id: 'actualizaciones', etiqueta: 'Actualizaciones', Icono: IconActualizar, soloAdmin: true, contenido: <ActualizacionesPanel />,
+  },
 ]
 
 export default function Configuracion() {

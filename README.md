@@ -40,6 +40,15 @@ Requisitos: Node 20+, Apache 2.4. Actualizar: `git pull && bash deploy/install.s
 
 La base de datos es `taller-bicicletas/prisma/dev.db` y las copias de seguridad se guardan en `data/backups`; ninguna se versiona.
 
+## Actualizaciones desde la aplicación
+
+En **Configuración › Actualizaciones** (solo administradores) se ve la versión instalada (commit y fecha) y si hay una nueva en el repositorio de git:
+
+- **Comprobar:** hace `git fetch` y compara con la rama remota. Si hay novedades, aparece un aviso en la cabecera para los administradores y un botón para actualizar.
+- **Actualizar:** solo funciona con `NODE_ENV=production` y `ACTUALIZACIONES=auto` en el `.env`; si no, la interfaz solo avisa y la actualización se hace a mano (`git pull && bash deploy/install.sh && systemctl restart taller`). El proceso es: comprueba que no hay cambios locales ni divergencias, guarda una copia de seguridad, hace un *merge* rápido (`git merge --ff-only`), aplica la base de datos, compila el front y reinicia el servicio (`Restart=always` en `deploy/taller.service`). Si algo falla, revierte al commit anterior.
+
+El servidor revisa si hay actualizaciones cada X horas (configurable en Ajustes); 0 desactiva el aviso automático.
+
 ## Datos reales y datos de prueba
 
 En **Configuración › Datos** (solo administradores) se elige con qué base trabaja la aplicación:
@@ -52,7 +61,7 @@ Son bases independientes, cada una con sus usuarios y sus copias de seguridad (`
 ## Más cosas útiles
 
 - **Modo claro/oscuro:** botón sol/luna en la cabecera (se recuerda en cada navegador).
-- **Actualizaciones:** la aplicación (PWA) busca versiones nuevas cada 5 minutos y se recarga sola; no hace falta vaciar la caché.
+- **Actualización de la PWA:** el front (PWA) busca una versión nueva cada 5 minutos y se recarga sola; no hace falta vaciar la caché. Para actualizar el servidor, ver «Actualizaciones desde la aplicación».
 - **Tests:** `npm test` en `taller-bicicletas` (lector CSV y cálculos de precios).
 - Al arrancar, el servidor avisa si `admin` o `mecanico` conservan la contraseña de ejemplo.
 - **Sin buscadores:** la aplicación es privada y no debe aparecer en Google. Lo evitan `robots.txt` (`Disallow: /`), la etiqueta `<meta name="robots" content="noindex…">` y la cabecera `X-Robots-Tag` (la envía la app y el VirtualHost de Apache). Para reforzarlo, protege también el subdominio con la contraseña de la propia app o con restricción de IP si lo prefieres.

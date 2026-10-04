@@ -10,7 +10,10 @@ User=taller
 WorkingDirectory=/opt/taller/taller-bicicletas
 EnvironmentFile=/opt/taller/taller-bicicletas/.env
 ExecStart=/usr/bin/node server/index.js
-Restart=on-failure
+# Restart=always permite que la actualización desde la interfaz reinicie el
+# servicio sola: el proceso termina con código 0 y systemd lo levanta de nuevo.
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

@@ -21,6 +21,8 @@ export const AJUSTES_DEFECTO = {
   pinActivado: false,
   pinMinutosInactividad: 5,
   bloqueoInactividadMinutos: 0,
+  actualizacionesActivas: true,
+  actualizacionesHoras: 6,
 }
 
 const AjustesContext = createContext(null)

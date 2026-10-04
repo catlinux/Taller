@@ -26,6 +26,8 @@ export const AJUSTES_DEFECTO = {
   pinActivado: false,
   pinMinutosInactividad: 5,
   bloqueoInactividadMinutos: 0,
+  actualizacionesActivas: true,
+  actualizacionesHoras: 6,
 }
 
 // Reglas de validación por clave. tipo: 'opcion' (lista de valores permitidos),
@@ -45,6 +47,8 @@ const VALIDADORES = {
   pinActivado: { tipo: 'booleano' },
   pinMinutosInactividad: { tipo: 'numero', min: 1, max: 120 },
   bloqueoInactividadMinutos: { tipo: 'numero', min: 0, max: 240 },
+  actualizacionesActivas: { tipo: 'booleano' },
+  actualizacionesHoras: { tipo: 'numero', min: 1, max: 168 },
 }
 
 // Valida un valor concreto para una clave conocida. Devuelve { valor } con el
