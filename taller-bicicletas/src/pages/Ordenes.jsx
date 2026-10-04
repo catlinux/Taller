@@ -70,7 +70,15 @@ export default function Ordenes() {
   const ordenEstados = ESTADOS.map((opcion) => opcion.valor)
 
   const columnas = [
-    { clave: 'numeroOrden', titulo: 'Nº orden', ancho: '130px', valor: (o) => o.numeroOrden, clase: 'font-medium text-white whitespace-nowrap' },
+    {
+      clave: 'numeroOrden', titulo: 'Nº orden', ancho: '130px', valor: (o) => o.numeroOrden,
+      // Si no cabe, se recorta por delante (…-0005) para que se vea la numeración, que es lo que distingue una orden de otra.
+      render: (o) => (
+        <span className="block truncate whitespace-nowrap font-medium text-white" style={{ direction: 'rtl', textAlign: 'left' }} title={o.numeroOrden}>
+          <bdi dir="ltr">{o.numeroOrden}</bdi>
+        </span>
+      ),
+    },
     {
       clave: 'fechaEntrada', titulo: 'Entrada', ancho: '110px', tipo: 'fecha',
       valor: (o) => o.fechaEntrada,
@@ -82,7 +90,7 @@ export default function Ordenes() {
       render: (o) => <span className={`block whitespace-nowrap ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
     },
     {
-      clave: 'cliente', titulo: 'Cliente', ancho: '24%',
+      clave: 'cliente', titulo: 'Cliente', ancho: '40%',
       valor: (o) => o.cliente?.nombre,
       render: (o) => (
         <div className="whitespace-nowrap" title={`#${o.cliente?.numeroCliente ?? ''} ${o.cliente?.nombre ?? ''}`.trim()}>
@@ -92,7 +100,7 @@ export default function Ordenes() {
       ),
     },
     {
-      clave: 'marca', titulo: 'Marca', ancho: '12%', valor: (o) => o.bicicleta?.marca,
+      clave: 'marca', titulo: 'Marca', ancho: '14%', valor: (o) => o.bicicleta?.marca,
       render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.bicicleta?.marca || ''}>{o.bicicleta?.marca || '—'}</span>,
     },
     {
@@ -108,7 +116,7 @@ export default function Ordenes() {
       },
     },
     {
-      clave: 'mecanico', titulo: 'Mecánico', ancho: '150px', valor: (o) => o.mecanico?.nombre,
+      clave: 'mecanico', titulo: 'Mecánico', ancho: '125px', valor: (o) => o.mecanico?.nombre,
       render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.mecanico?.nombre || ''}>{o.mecanico?.nombre || '—'}</span>,
     },
     {
