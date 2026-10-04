@@ -82,7 +82,7 @@ export default function Clientes() {
   }
 
   const columnas = [
-    { clave: 'numero', titulo: 'Nº Cl', title: 'Número de cliente', ancho: '88px', alinear: 'izq', tipo: 'numero', valor: (c) => c.numeroCliente, clase: 'text-slate-400' },
+    { clave: 'numero', titulo: 'Nº cliente', title: 'Número de cliente', ancho: '110px', alinear: 'izq', tipo: 'numero', valor: (c) => c.numeroCliente, clase: 'text-slate-400' },
     {
       clave: 'cliente',
       titulo: 'Nombre cliente',
