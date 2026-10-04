@@ -1,0 +1,15 @@
+services:
+  taller:
+    build: .
+    container_name: taller
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ACTUALIZACIONES: docker      # actualizaciones vía vigilante.sh (carpeta control/)
+      CONTROL_DIR: /control
+    ports: ["127.0.0.1:8083:3001"]
+    volumes:
+      - taller-data:/data
+      - ./control:/control         # carpeta compartida con vigilante.sh
+volumes:
+  taller-data:

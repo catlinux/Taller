@@ -9,6 +9,7 @@ import {
   ejecutarComprobacion,
   leerUltimaActualizacion,
 } from '../lib/actualizaciones.js'
+import { esModoDocker, esperarComprobacion, hayControl, leerEstadoDocker, solicitar } from '../lib/actualizacionesDocker.js'
 
 const router = Router()
 
@@ -18,11 +19,15 @@ router.use(authMiddleware, roleMiddleware('admin'))
 // Solo se permite aplicar cambios cuando estamos en producción y el entorno
 // indica que hay un gestor de procesos que reinicia el servicio (ACTUALIZACIONES=auto).
 export function aplicarHabilitado() {
+  if (esModoDocker()) return hayControl()
   return process.env.NODE_ENV === 'production' && process.env.ACTUALIZACIONES === 'auto'
 }
 
 // Estado completo que consume el panel de Configuración.
 async function estadoCompleto() {
+  if (esModoDocker()) {
+    return { ...leerEstadoDocker(), modo: 'docker', habilitadoAplicar: aplicarHabilitado(), ultimaActualizacion: null }
+  }
   estadoActualizaciones.esRepositorio = await esRepositorioGit()
   // La versión instalada se lee siempre que falte, sin esperar a la primera comprobación.
   if (estadoActualizaciones.esRepositorio && !estadoActualizaciones.version) {
@@ -47,6 +52,15 @@ router.get('/', async (req, res, next) => {
 // POST /comprobar -> fuerza una comprobación (git fetch + comparar) y devuelve el estado.
 router.post('/comprobar', async (req, res, next) => {
   try {
+    if (esModoDocker()) {
+      // El vigilante recoge la orden en pocos segundos y hace git fetch en el anfitrión.
+      const desde = Date.now()
+      solicitar('comprobar')
+      if (!(await esperarComprobacion(desde))) {
+        return res.status(504).json({ error: 'El vigilante del servidor no ha respondido. Comprueba que su cron está instalado (crontab -l en el servidor).' })
+      }
+      return res.json(await estadoCompleto())
+    }
     await ejecutarComprobacion()
     return res.json(await estadoCompleto())
   } catch (error) {
@@ -58,6 +72,14 @@ router.post('/comprobar', async (req, res, next) => {
 router.post('/aplicar', async (req, res) => {
   if (req.body?.confirmar !== true) {
     return res.status(400).json({ error: 'Falta la confirmación para actualizar la aplicación' })
+  }
+  if (esModoDocker()) {
+    const actual = leerEstadoDocker()
+    if (actual.aplicando) return res.status(409).json({ error: 'Ya hay una actualización en curso' })
+    if (!hayControl()) return res.status(403).json({ error: 'Falta la carpeta compartida con el servidor (volumen «control»).' })
+    // El vigilante hace copia de seguridad, git y `docker compose up -d --build`.
+    solicitar('actualizar')
+    return res.status(202).json({ ok: true, aplicando: true, mensaje: 'Actualización solicitada' })
   }
   if (estadoActualizaciones.aplicando) {
     return res.status(409).json({ error: 'Ya hay una actualización en curso' })

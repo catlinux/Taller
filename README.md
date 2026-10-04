@@ -84,3 +84,20 @@ bash taller-bicicletas/deploy/update.sh --force   # solo si el historial de git 
 ```
 
 Hace una copia de la base de datos (`data/backups/backup-pre-update-*.db`, visible en Configuración › Copias de seguridad), `git`, `npm ci`, `prisma db push`, compila y reinicia el servicio `taller`. Es lo que hay que usar la primera vez, hasta que el servidor tenga la versión que incluye el botón de actualizar de la aplicación.
+
+## Instalación con Docker (la del servidor de demo)
+
+`taller-bicicletas/deploy/docker/` tiene todo lo necesario: `Dockerfile`, `docker-compose.yml`, `entrypoint.sh`, `update.sh` y `vigilante.sh`. Estructura en el servidor:
+
+```
+~/taller-deploy/
+├── Dockerfile, docker-compose.yml, entrypoint.sh, update.sh, vigilante.sh   (copiados de deploy/docker/)
+├── .env            JWT_SECRET (y lo que haga falta)
+├── control/        carpeta compartida con el contenedor (/control)
+└── Taller/         clon de este repositorio
+```
+
+- Los datos viven en el volumen `taller-data` (`/data` dentro del contenedor): base de datos y copias de seguridad.
+- **Actualizar a mano:** `~/taller-deploy/update.sh` (copia de la base, `git reset` a `origin/main` y `docker compose up -d --build`).
+- **Actualizar desde la app:** el contenedor no tiene git ni acceso a Docker. `vigilante.sh`, lanzado por cron cada minuto (`* * * * * $HOME/taller-deploy/vigilante.sh >/dev/null 2>&1` en el crontab del usuario que gestiona Docker), comprueba GitHub cada 30 minutos y atiende en segundos las órdenes de la app («Comprobar ahora» y «Actualizar ahora») a través de `control/`. Requiere `ACTUALIZACIONES=docker` y el volumen `./control:/control`, que ya trae el `docker-compose.yml`.
+- Con Docker no se usan `deploy/taller.service` ni `deploy/instalar-servicio.sh` (son para instalar sin Docker, con systemd).

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { apiGet, apiPost } from '../../lib/api.js'
@@ -65,6 +65,19 @@ export default function ActualizacionesPanel() {
   const aplicando = Boolean(data?.aplicando)
   const cambios = data?.cambios ?? []
 
+  // Al aplicar, el servidor se reinicia (en Docker se reconstruye el contenedor):
+  // mientras no responde se muestra «Reiniciando…» y, cuando vuelve con la
+  // actualización hecha, se recarga la página para cargar la versión nueva.
+  const vistoAplicando = useRef(false)
+  if (aplicando) vistoAplicando.current = true
+  const reiniciando = vistoAplicando.current && Boolean(errorEstado)
+  const terminadoOk = vistoAplicando.current && !aplicando && Boolean(data?.resultado?.ok)
+  useEffect(() => {
+    if (!terminadoOk) return undefined
+    const temporizador = setTimeout(() => window.location.reload(), 1500)
+    return () => clearTimeout(temporizador)
+  }, [terminadoOk])
+
   function confirmarAplicar() {
     const total = data?.atrasadas ?? cambios.length
     const texto = `Se descargarán e integrarán ${total} ${total === 1 ? 'cambio' : 'cambios'} del repositorio, se actualizará la base de datos y se recompilará la aplicación. Antes se hará una copia de seguridad. Durante el proceso la aplicación no estará disponible unos momentos. ¿Continuar?`
@@ -120,7 +133,13 @@ export default function ActualizacionesPanel() {
           </p>
         )}
 
-        {(errorEstado || data?.ultimoError) && (
+        {reiniciando && (
+          <p role="status" className="rounded-lg border border-azul-500/30 bg-azul-500/10 px-4 py-3 text-sm text-azul-300">
+            Reiniciando la aplicación con la versión nueva… La página se recargará sola en cuanto vuelva a responder.
+          </p>
+        )}
+
+        {!reiniciando && (errorEstado || data?.ultimoError) && (
           <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
             {(errorEstado?.message) || data.ultimoError}
           </p>

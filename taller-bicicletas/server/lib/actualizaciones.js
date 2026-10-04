@@ -14,6 +14,7 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { esModoDocker, leerEstadoDocker } from './actualizacionesDocker.js'
 
 // --- Separadores para parsear la salida de `git log` de forma robusta. ---
 // Los mensajes de commit pueden contener saltos de línea, comillas o tabuladores,
@@ -218,6 +219,11 @@ export const estadoActualizaciones = {
 
 // Ejecuta una comprobación y deja el resultado (o el error) en el estado.
 export async function ejecutarComprobacion({ cwd = process.cwd(), ejecutar = ejecutarPorDefecto } = {}) {
+  // En Docker la comprobación la hace el vigilante del anfitrión; aquí solo se lee.
+  if (esModoDocker()) {
+    Object.assign(estadoActualizaciones, leerEstadoDocker())
+    return estadoActualizaciones
+  }
   try {
     const esRepositorio = await esRepositorioGit(cwd, ejecutar)
     estadoActualizaciones.esRepositorio = esRepositorio
