@@ -146,12 +146,26 @@ async function idLibre(modelo, id) {
   return (await modelo.findUnique({ where: { id } })) === null
 }
 
-// Primer texto libre de la forma «base», «base-2», «base-3»... según `existe`.
-async function siguienteTextoLibre(base, existe, formato = (b, n) => `${b}-${n}`) {
+// Primer valor libre a partir del original: si `base` está libre se devuelve tal cual;
+// si no, se sube el número final conservando los ceros (CAM-0002 -> CAM-0003 ->
+// CAM-0004...); si no acaba en número, se añade un sufijo (`formato`, por defecto
+// «-2», «-3»...). `existe` indica si un valor ya está ocupado.
+export async function siguienteTextoLibre(base, existe, formato = (b, n) => `${b}-${n}`) {
   if (!(await existe(base))) return base
-  for (let n = 2; n < 10000; n += 1) {
-    const candidato = formato(base, n)
-    if (!(await existe(candidato))) return candidato
+  const final = /^(.*?)(\d+)$/.exec(base)
+  if (final) {
+    const ancho = final[2].length
+    let n = BigInt(final[2])
+    for (let i = 0; i < 100000; i += 1) {
+      n += 1n
+      const candidato = final[1] + String(n).padStart(ancho, '0')
+      if (!(await existe(candidato))) return candidato
+    }
+  } else {
+    for (let n = 2; n < 10000; n += 1) {
+      const candidato = formato(base, n)
+      if (!(await existe(candidato))) return candidato
+    }
   }
   throw new ErrorPapelera('No se ha encontrado un valor libre para restaurar el registro.')
 }
@@ -162,8 +176,8 @@ async function restaurarCliente(tx, { cliente, bicicletas = [] }, avisos = []) {
   const datos = { ...cliente }
   const ocupado = await tx.cliente.findUnique({ where: { numeroCliente: datos.numeroCliente } })
   if (ocupado) {
-    const { _max } = await tx.cliente.aggregate({ _max: { numeroCliente: true } })
-    const nuevo = (_max.numeroCliente ?? 0) + 1
+    let nuevo = datos.numeroCliente + 1
+    while (await tx.cliente.findUnique({ where: { numeroCliente: nuevo } })) nuevo += 1
     avisos.push(`El nº de cliente ${datos.numeroCliente} ya lo usa otro cliente: se ha restaurado como nº ${nuevo}.`)
     datos.numeroCliente = nuevo
   }
@@ -213,22 +227,25 @@ async function restaurarArticulosLote(tx, { articulos = [] }, avisos = []) {
   }
 }
 
-// Siguiente número de orden libre del año, respetando el contador que impide
-// reutilizar números (clave contadorOrdenes-AAAA de la tabla Ajuste).
-async function siguienteNumeroOrden(tx, anio) {
-  const prefijo = `ORD-${anio}-`
-  const clave = `contadorOrdenes-${anio}`
-  const existentes = await tx.ordenReparacion.findMany({ where: { numeroOrden: { startsWith: prefijo } }, select: { numeroOrden: true } })
-  let maximo = 0
-  for (const { numeroOrden } of existentes) {
-    const n = Number(numeroOrden.split('-')[2])
-    if (Number.isInteger(n) && n > maximo) maximo = n
+// Siguiente número de orden libre a partir del original (ORD-2026-0009 ->
+// ORD-2026-0010...). El contador anual (clave contadorOrdenes-AAAA de la tabla
+// Ajuste) se sube hasta ese número para que no se vuelva a emitir.
+async function siguienteNumeroOrden(tx, numeroOriginal) {
+  const nuevo = await siguienteTextoLibre(
+    numeroOriginal,
+    async (n) => (await tx.ordenReparacion.findUnique({ where: { numeroOrden: n } })) !== null,
+  )
+  const [, anio, numero] = String(nuevo).split('-')
+  const n = Number(numero)
+  if (anio && Number.isInteger(n)) {
+    const clave = `contadorOrdenes-${anio}`
+    const contador = await tx.ajuste.findUnique({ where: { clave } })
+    const guardado = contador ? Number(contador.valor) : 0
+    if (!Number.isInteger(guardado) || guardado < n) {
+      await tx.ajuste.upsert({ where: { clave }, update: { valor: String(n) }, create: { clave, valor: String(n) } })
+    }
   }
-  const contador = await tx.ajuste.findUnique({ where: { clave } })
-  const guardado = contador ? Number(contador.valor) : 0
-  const siguiente = Math.max(maximo, Number.isInteger(guardado) ? guardado : 0) + 1
-  await tx.ajuste.upsert({ where: { clave }, update: { valor: String(siguiente) }, create: { clave, valor: String(siguiente) } })
-  return `${prefijo}${String(siguiente).padStart(4, '0')}`
+  return nuevo
 }
 
 // Orden con sus líneas de materiales y de mano de obra.
@@ -246,8 +263,7 @@ async function restaurarOrden(tx, { orden: ordenOriginal, materiales = [], manoO
   }
   // Si su número de orden ya lo usa otra (p. ej. tras volver a una copia de seguridad), vuelve con el siguiente libre.
   if (await tx.ordenReparacion.findUnique({ where: { numeroOrden: orden.numeroOrden } })) {
-    const anio = Number(String(orden.numeroOrden).split('-')[1]) || new Date().getFullYear()
-    const nuevo = await siguienteNumeroOrden(tx, anio)
+    const nuevo = await siguienteNumeroOrden(tx, orden.numeroOrden)
     avisos.push(`El nº de orden ${orden.numeroOrden} ya lo usa otra orden: se ha restaurado como ${nuevo}.`)
     orden.numeroOrden = nuevo
   }

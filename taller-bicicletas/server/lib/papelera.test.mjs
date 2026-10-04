@@ -75,3 +75,29 @@ test('descripciones de operación y mecánico', () => {
   assert.equal(descripcionOperacion({ codigo: 'MO', descripcion: 'Ajuste' }), 'Operación MO Ajuste')
   assert.equal(descripcionMecanico({ nombre: 'Luis' }), 'Mecánico Luis')
 })
+
+// --- Siguiente valor libre a partir del original ---
+import { siguienteTextoLibre } from './papelera.js'
+
+const ocupados = (...lista) => async (valor) => lista.includes(valor)
+
+test('siguienteTextoLibre devuelve el original si está libre', async () => {
+  assert.equal(await siguienteTextoLibre('CAM-0002', ocupados('CAM-0001')), 'CAM-0002')
+})
+
+test('siguienteTextoLibre sube el número final conservando los ceros', async () => {
+  assert.equal(await siguienteTextoLibre('CAM-0002', ocupados('CAM-0002')), 'CAM-0003')
+  assert.equal(await siguienteTextoLibre('CAM-0002', ocupados('CAM-0002', 'CAM-0003', 'CAM-0004')), 'CAM-0005')
+  assert.equal(await siguienteTextoLibre('ORD-2026-0009', ocupados('ORD-2026-0009')), 'ORD-2026-0010')
+  assert.equal(await siguienteTextoLibre('X-099', ocupados('X-099')), 'X-100')
+})
+
+test('siguienteTextoLibre añade sufijo si no acaba en número', async () => {
+  assert.equal(await siguienteTextoLibre('REV-GEN', ocupados('REV-GEN')), 'REV-GEN-2')
+  assert.equal(await siguienteTextoLibre('REV-GEN', ocupados('REV-GEN', 'REV-GEN-2')), 'REV-GEN-3')
+  assert.equal(await siguienteTextoLibre('Ana', ocupados('Ana'), (b, n) => `${b} (${n})`), 'Ana (2)')
+})
+
+test('siguienteTextoLibre soporta números largos sin perder precisión', async () => {
+  assert.equal(await siguienteTextoLibre('8412345678901234567890', ocupados('8412345678901234567890')), '8412345678901234567891')
+})
