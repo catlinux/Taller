@@ -136,6 +136,20 @@ async function generarNumeroOrden(client = prisma) {
   return numeroOrden
 }
 
+// Sube el contador anual de números de orden hasta `numeroOrden` (formato
+// ORD-AAAA-NNNN) si estaba por debajo. Nunca lo baja.
+async function asegurarContadorOrdenes(client, numeroOrden) {
+  const [, anio, numero] = String(numeroOrden).split('-')
+  const n = Number(numero)
+  if (!anio || !Number.isInteger(n) || n < 1) return
+  const clave = `contadorOrdenes-${anio}`
+  const actual = await client.ajuste.findUnique({ where: { clave } })
+  const guardado = actual ? Number(actual.valor) : 0
+  if (!Number.isInteger(guardado) || guardado < n) {
+    await client.ajuste.upsert({ where: { clave }, update: { valor: String(n) }, create: { clave, valor: String(n) } })
+  }
+}
+
 // Valida y construye los datos de una orden a partir del cuerpo de la petición.
 // Con `parcial: true` solo se tienen en cuenta los campos presentes (actualización).
 function construirDatosOrden(body, { parcial = false } = {}) {
@@ -649,6 +663,10 @@ router.delete('/:id', async (req, res, next) => {
         usuario,
       })
       await tx.ordenReparacion.delete({ where: { id } })
+      // Pase lo que pase, el número de la orden borrada no se vuelve a emitir: el
+      // contador del año debe incluirlo aunque la orden viniera de un seed o de una
+      // importación (que no escriben el contador).
+      await asegurarContadorOrdenes(tx, orden.numeroOrden)
       return creada
     })
     return res.json({ success: true, papeleraId })

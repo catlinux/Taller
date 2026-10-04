@@ -42,8 +42,9 @@ router.post('/:id/restaurar', async (req, res, next) => {
     if (TIPOS_SOLO_ADMIN.includes(entrada.tipo) && req.user?.rol !== 'admin') {
       return res.status(403).json({ error: 'No tienes permisos para restaurar esta entrada' })
     }
-    await restaurarEntrada(prisma, entrada)
-    res.json({ ok: true, tipo: entrada.tipo, descripcion: entrada.descripcion })
+    const { avisos } = await restaurarEntrada(prisma, entrada)
+    // `aviso`: qué ha cambiado si algún número o código ya estaba ocupado.
+    res.json({ ok: true, tipo: entrada.tipo, descripcion: entrada.descripcion, aviso: avisos.length ? avisos.join(' ') : null })
   } catch (error) {
     if (error?.status) return res.status(error.status).json({ error: error.message })
     next(error)

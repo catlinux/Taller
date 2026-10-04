@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { apiPost } from '../lib/api.js'
 import { useAuth } from './AuthContext.jsx'
 import { IconDeshacer } from '../components/Icons.jsx'
@@ -9,13 +10,18 @@ import { IconDeshacer } from '../components/Icons.jsx'
 // servidor y una función para refrescar las listas afectadas tras restaurar.
 const DeshacerContext = createContext(null)
 
-// Tiempo que el aviso permanece visible antes de desaparecer solo (ms).
-const DURACION_AVISO = 10000
+// El aviso NO se cierra solo: permanece hasta que se pulsa ×, se refresca la página
+// o se cambia de pantalla. Si la propia acción de borrar navega a otra ruta (p. ej.
+// borrar una orden desde su ficha vuelve al listado), el aviso se queda: se
+// considera que esa navegación forma parte del borrado si ocurre en este margen (ms).
+const MARGEN_NAVEGACION_PROPIA = 2500
 
 export function DeshacerProvider({ children }) {
   const { token } = useAuth()
   const [avisos, setAvisos] = useState([])
   const siguienteId = useRef(0)
+  const { pathname } = useLocation()
+  const rutaAnterior = useRef(pathname)
 
   const descartar = useCallback((id) => {
     setAvisos((actuales) => actuales.filter((aviso) => aviso.id !== id))
@@ -27,25 +33,29 @@ export function DeshacerProvider({ children }) {
   const mostrarDeshacer = useCallback(({ descripcion, papeleraId, onRestaurar }) => {
     if (!papeleraId) return
     const id = (siguienteId.current += 1)
-    setAvisos((actuales) => [...actuales, { id, descripcion, papeleraId, onRestaurar, restaurando: false, error: '' }])
+    setAvisos((actuales) => [...actuales, { id, descripcion, papeleraId, onRestaurar, restaurando: false, error: '', nota: '', restaurado: false, creado: Date.now() }])
   }, [])
 
-  // Cierra automáticamente cada aviso tras unos segundos, sin dejar temporizadores
-  // vivos cuando el componente se desmonta.
+  // Al cambiar de pantalla se retiran los avisos (salvo los creados justo antes,
+  // cuya acción es la que provoca la navegación: esos pasan a la nueva ruta).
   useEffect(() => {
-    if (avisos.length === 0) return undefined
-    const temporizador = setTimeout(() => {
-      setAvisos((actuales) => actuales.slice(1))
-    }, DURACION_AVISO)
-    return () => clearTimeout(temporizador)
-  }, [avisos])
+    if (rutaAnterior.current === pathname) return
+    rutaAnterior.current = pathname
+    setAvisos((actuales) => actuales.filter((aviso) => Date.now() - aviso.creado < MARGEN_NAVEGACION_PROPIA))
+  }, [pathname])
 
   const restaurar = useCallback(async (aviso) => {
     setAvisos((actuales) => actuales.map((a) => (a.id === aviso.id ? { ...a, restaurando: true, error: '' } : a)))
     try {
-      await apiPost(`/api/papelera/${aviso.papeleraId}/restaurar`, token, {})
+      const respuesta = await apiPost(`/api/papelera/${aviso.papeleraId}/restaurar`, token, {})
       aviso.onRestaurar?.()
-      setAvisos((actuales) => actuales.filter((a) => a.id !== aviso.id))
+      if (respuesta?.aviso) {
+        // Se restauró con otro número/código porque el original estaba ocupado: se
+        // deja el aviso para que se vea qué cambió.
+        setAvisos((actuales) => actuales.map((a) => (a.id === aviso.id ? { ...a, restaurando: false, restaurado: true, nota: respuesta.aviso } : a)))
+      } else {
+        setAvisos((actuales) => actuales.filter((a) => a.id !== aviso.id))
+      }
     } catch (e) {
       setAvisos((actuales) => actuales.map((a) => (a.id === aviso.id ? { ...a, restaurando: false, error: e.message } : a)))
     }
@@ -67,7 +77,7 @@ export function DeshacerProvider({ children }) {
       const etiqueta = objetivo?.tagName
       if (etiqueta === 'INPUT' || etiqueta === 'TEXTAREA' || etiqueta === 'SELECT' || objetivo?.isContentEditable) return
       const ultimo = avisosRef.current[avisosRef.current.length - 1]
-      if (!ultimo || ultimo.restaurando) return
+      if (!ultimo || ultimo.restaurando || ultimo.restaurado) return
       event.preventDefault()
       restaurar(ultimo)
     }
@@ -91,19 +101,30 @@ export function DeshacerProvider({ children }) {
             >
               <IconDeshacer size={20} className="mt-0.5 shrink-0 text-azul-300" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-slate-200">Se ha eliminado <span className="font-medium text-white">{aviso.descripcion}</span>.</p>
-                {aviso.error
-                  ? <p className="mt-0.5 text-xs text-rose-300">{aviso.error}</p>
-                  : <p className="mt-0.5 text-xs text-slate-500">Puedes restaurarlo desde aquí o desde la papelera.</p>}
+                {aviso.restaurado ? (
+                  <>
+                    <p className="text-sm text-slate-200">Restaurado: <span className="font-medium text-white">{aviso.descripcion}</span>.</p>
+                    <p className="mt-0.5 text-xs text-naranja-300">{aviso.nota}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-slate-200">Se ha eliminado <span className="font-medium text-white">{aviso.descripcion}</span>.</p>
+                    {aviso.error
+                      ? <p className="mt-0.5 text-xs text-rose-300">{aviso.error}</p>
+                      : <p className="mt-0.5 text-xs text-slate-500">Puedes restaurarlo desde aquí o desde la papelera.</p>}
+                  </>
+                )}
               </div>
-              <button
-                type="button"
-                disabled={aviso.restaurando}
-                onClick={() => restaurar(aviso)}
-                className="shrink-0 rounded-lg border border-azul-500/50 bg-azul-500/10 px-3 py-1.5 text-sm font-medium text-azul-300 hover:bg-azul-500/20 disabled:opacity-50"
-              >
-                {aviso.restaurando ? 'Restaurando…' : 'Deshacer'}
-              </button>
+              {!aviso.restaurado && (
+                <button
+                  type="button"
+                  disabled={aviso.restaurando}
+                  onClick={() => restaurar(aviso)}
+                  className="shrink-0 rounded-lg border border-azul-500/50 bg-azul-500/10 px-3 py-1.5 text-sm font-medium text-azul-300 hover:bg-azul-500/20 disabled:opacity-50"
+                >
+                  {aviso.restaurando ? 'Restaurando…' : 'Deshacer'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => descartar(aviso.id)}

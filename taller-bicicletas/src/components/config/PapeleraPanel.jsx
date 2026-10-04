@@ -30,6 +30,8 @@ export default function PapeleraPanel() {
   const esAdmin = user?.rol === 'admin'
   const queryClient = useQueryClient()
   const [errorAccion, setErrorAccion] = useState('')
+  // Qué cambió al restaurar si el número, código o nombre original estaba ocupado.
+  const [notaRestauracion, setNotaRestauracion] = useState('')
 
   const { data, isLoading, error } = useQuery(
     ['papelera'],
@@ -40,8 +42,9 @@ export default function PapeleraPanel() {
   const refrescar = () => queryClient.invalidateQueries(['papelera'])
 
   const restaurar = useMutation((id) => apiPost(`/api/papelera/${id}/restaurar`, token, {}), {
-    onSuccess: () => {
+    onSuccess: (respuesta) => {
       setErrorAccion('')
+      setNotaRestauracion(respuesta?.aviso || '')
       refrescar()
     },
     onError: (e) => setErrorAccion(e.message),
@@ -130,6 +133,7 @@ export default function PapeleraPanel() {
         )}
       </div>
 
+      {notaRestauracion && <p role="status" className="mb-4 rounded-lg border border-naranja-500/30 bg-naranja-500/10 px-4 py-3 text-sm text-naranja-300">{notaRestauracion}</p>}
       {errorAccion && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}
       {error && <p role="alert" className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{error.message}</p>}
 

@@ -100,11 +100,15 @@ export async function purgarAntiguas(prisma, dias = 30) {
 // terminar borra la propia entrada de la papelera (también en la transacción).
 export async function restaurarEntrada(prisma, entrada) {
   const datos = deserializarDatos(entrada.datos)
+  // Si algo ya está ocupado (número de cliente, referencia, nombre...), el registro
+  // se restaura con el siguiente valor libre y se deja constancia en `avisos`.
+  const avisos = []
   try {
     await prisma.$transaction(async (tx) => {
-      await restaurarPorTipo(tx, entrada.tipo, datos)
+      await restaurarPorTipo(tx, entrada.tipo, datos, avisos)
       await tx.papelera.delete({ where: { id: entrada.id } })
     })
+    return { avisos }
   } catch (error) {
     if (error instanceof ErrorPapelera) throw error
     // Clave única repetida (mismo número de cliente, misma referencia...).
@@ -119,56 +123,117 @@ export async function restaurarEntrada(prisma, entrada) {
   }
 }
 
-async function restaurarPorTipo(tx, tipo, datos) {
+async function restaurarPorTipo(tx, tipo, datos, avisos) {
   switch (tipo) {
-    case 'cliente': return restaurarCliente(tx, datos)
+    case 'cliente': return restaurarCliente(tx, datos, avisos)
     case 'bicicleta': return restaurarBicicleta(tx, datos)
-    case 'articulo': return restaurarArticulo(tx, datos)
-    case 'articulos-lote': return restaurarArticulosLote(tx, datos)
-    case 'orden': return restaurarOrden(tx, datos)
+    case 'articulo': return restaurarArticulo(tx, datos, avisos)
+    case 'articulos-lote': return restaurarArticulosLote(tx, datos, avisos)
+    case 'orden': return restaurarOrden(tx, datos, avisos)
     case 'material-orden': return restaurarLineaMaterial(tx, datos)
     case 'mano-obra-orden': return restaurarLineaManoObra(tx, datos)
-    case 'operacion': return restaurarOperacion(tx, datos)
-    case 'mecanico': return restaurarMecanico(tx, datos)
+    case 'operacion': return restaurarOperacion(tx, datos, avisos)
+    case 'mecanico': return restaurarMecanico(tx, datos, avisos)
     default:
       throw new ErrorPapelera(`No se sabe restaurar el tipo «${tipo}».`, 400)
   }
 }
 
-// Cliente y, en cascada, sus bicicletas.
-async function restaurarCliente(tx, { cliente, bicicletas = [] }) {
-  await tx.cliente.create({ data: cliente })
+// Si el id original ya lo usa otro registro (no debería pasar: SQLite no reutiliza
+// ids), se deja que la base asigne uno nuevo.
+async function idLibre(modelo, id) {
+  if (id === undefined || id === null) return false
+  return (await modelo.findUnique({ where: { id } })) === null
+}
+
+// Primer texto libre de la forma «base», «base-2», «base-3»... según `existe`.
+async function siguienteTextoLibre(base, existe, formato = (b, n) => `${b}-${n}`) {
+  if (!(await existe(base))) return base
+  for (let n = 2; n < 10000; n += 1) {
+    const candidato = formato(base, n)
+    if (!(await existe(candidato))) return candidato
+  }
+  throw new ErrorPapelera('No se ha encontrado un valor libre para restaurar el registro.')
+}
+
+// Cliente y, en cascada, sus bicicletas. Si su número de cliente ya lo usa otro,
+// vuelve con el siguiente número libre.
+async function restaurarCliente(tx, { cliente, bicicletas = [] }, avisos = []) {
+  const datos = { ...cliente }
+  const ocupado = await tx.cliente.findUnique({ where: { numeroCliente: datos.numeroCliente } })
+  if (ocupado) {
+    const { _max } = await tx.cliente.aggregate({ _max: { numeroCliente: true } })
+    const nuevo = (_max.numeroCliente ?? 0) + 1
+    avisos.push(`El nº de cliente ${datos.numeroCliente} ya lo usa otro cliente: se ha restaurado como nº ${nuevo}.`)
+    datos.numeroCliente = nuevo
+  }
+  if (!(await idLibre(tx.cliente, datos.id))) delete datos.id
+  const creado = await tx.cliente.create({ data: datos })
   for (const bicicleta of bicicletas) {
-    await tx.bicicleta.create({ data: bicicleta })
+    const datosBici = { ...bicicleta, clienteId: creado.id }
+    if (!(await idLibre(tx.bicicleta, datosBici.id))) delete datosBici.id
+    await tx.bicicleta.create({ data: datosBici })
   }
 }
 
 async function restaurarBicicleta(tx, { bicicleta }) {
   const cliente = await tx.cliente.findUnique({ where: { id: bicicleta.clienteId } })
-  if (!cliente) throw new ErrorPapelera('No se puede restaurar la bicicleta porque su cliente ya no existe.')
-  await tx.bicicleta.create({ data: bicicleta })
+  if (!cliente) throw new ErrorPapelera('No se puede restaurar la bicicleta porque su cliente ya no existe. Restaura primero al cliente si está en la papelera.')
+  const datos = { ...bicicleta }
+  if (!(await idLibre(tx.bicicleta, datos.id))) delete datos.id
+  await tx.bicicleta.create({ data: datos })
 }
 
 // Artículo y el reenlazado de las líneas de orden que lo usaban (que quedaron
 // con articuloId a null al borrarlo).
-async function restaurarArticulo(tx, { articulo, lineas = [] }) {
-  await tx.articulo.create({ data: articulo })
+// Si su referencia ya la usa otro artículo, vuelve con la siguiente libre (REF-2...).
+async function restaurarArticulo(tx, { articulo, lineas = [] }, avisos = []) {
+  const datos = { ...articulo }
+  const referencia = await siguienteTextoLibre(
+    datos.referencia,
+    async (ref) => (await tx.articulo.findUnique({ where: { referencia: ref } })) !== null,
+  )
+  if (referencia !== datos.referencia) {
+    avisos.push(`La referencia ${datos.referencia} ya la usa otro artículo: se ha restaurado como ${referencia}.`)
+    datos.referencia = referencia
+  }
+  if (!(await idLibre(tx.articulo, datos.id))) delete datos.id
+  const creado = await tx.articulo.create({ data: datos })
   if (lineas.length > 0) {
     await tx.ordenMaterial.updateMany({
       where: { id: { in: lineas }, articuloId: null },
-      data: { articuloId: articulo.id },
+      data: { articuloId: creado.id },
     })
   }
 }
 
-async function restaurarArticulosLote(tx, { articulos = [] }) {
+async function restaurarArticulosLote(tx, { articulos = [] }, avisos = []) {
   for (const { articulo, lineas = [] } of articulos) {
-    await restaurarArticulo(tx, { articulo, lineas })
+    await restaurarArticulo(tx, { articulo, lineas }, avisos)
   }
 }
 
+// Siguiente número de orden libre del año, respetando el contador que impide
+// reutilizar números (clave contadorOrdenes-AAAA de la tabla Ajuste).
+async function siguienteNumeroOrden(tx, anio) {
+  const prefijo = `ORD-${anio}-`
+  const clave = `contadorOrdenes-${anio}`
+  const existentes = await tx.ordenReparacion.findMany({ where: { numeroOrden: { startsWith: prefijo } }, select: { numeroOrden: true } })
+  let maximo = 0
+  for (const { numeroOrden } of existentes) {
+    const n = Number(numeroOrden.split('-')[2])
+    if (Number.isInteger(n) && n > maximo) maximo = n
+  }
+  const contador = await tx.ajuste.findUnique({ where: { clave } })
+  const guardado = contador ? Number(contador.valor) : 0
+  const siguiente = Math.max(maximo, Number.isInteger(guardado) ? guardado : 0) + 1
+  await tx.ajuste.upsert({ where: { clave }, update: { valor: String(siguiente) }, create: { clave, valor: String(siguiente) } })
+  return `${prefijo}${String(siguiente).padStart(4, '0')}`
+}
+
 // Orden con sus líneas de materiales y de mano de obra.
-async function restaurarOrden(tx, { orden, materiales = [], manoObra = [] }) {
+async function restaurarOrden(tx, { orden: ordenOriginal, materiales = [], manoObra = [] }, avisos = []) {
+  const orden = { ...ordenOriginal }
   const cliente = await tx.cliente.findUnique({ where: { id: orden.clienteId } })
   if (!cliente) throw new ErrorPapelera('No se puede restaurar la orden porque su cliente ya no existe.')
   if (orden.bicicletaId) {
@@ -179,12 +244,24 @@ async function restaurarOrden(tx, { orden, materiales = [], manoObra = [] }) {
     const mecanico = await tx.mecanico.findUnique({ where: { id: orden.mecanicoId } })
     if (!mecanico) throw new ErrorPapelera('No se puede restaurar la orden porque su mecánico ya no existe.')
   }
-  await tx.ordenReparacion.create({ data: orden })
+  // Si su número de orden ya lo usa otra (p. ej. tras volver a una copia de seguridad), vuelve con el siguiente libre.
+  if (await tx.ordenReparacion.findUnique({ where: { numeroOrden: orden.numeroOrden } })) {
+    const anio = Number(String(orden.numeroOrden).split('-')[1]) || new Date().getFullYear()
+    const nuevo = await siguienteNumeroOrden(tx, anio)
+    avisos.push(`El nº de orden ${orden.numeroOrden} ya lo usa otra orden: se ha restaurado como ${nuevo}.`)
+    orden.numeroOrden = nuevo
+  }
+  if (!(await idLibre(tx.ordenReparacion, orden.id))) delete orden.id
+  const creada = await tx.ordenReparacion.create({ data: orden })
   for (const material of materiales) {
-    await tx.ordenMaterial.create({ data: await prepararMaterial(tx, material) })
+    const datos = { ...(await prepararMaterial(tx, material)), ordenId: creada.id }
+    if (!(await idLibre(tx.ordenMaterial, datos.id))) delete datos.id
+    await tx.ordenMaterial.create({ data: datos })
   }
   for (const linea of manoObra) {
-    await tx.ordenManoObra.create({ data: linea })
+    const datos = { ...linea, ordenId: creada.id }
+    if (!(await idLibre(tx.ordenManoObra, datos.id))) delete datos.id
+    await tx.ordenManoObra.create({ data: datos })
   }
 }
 
@@ -202,14 +279,18 @@ async function prepararMaterial(tx, material) {
 async function restaurarLineaMaterial(tx, { linea }) {
   const orden = await tx.ordenReparacion.findUnique({ where: { id: linea.ordenId } })
   if (!orden) throw new ErrorPapelera('No se puede restaurar la línea porque su orden ya no existe.')
-  await tx.ordenMaterial.create({ data: await prepararMaterial(tx, linea) })
+  const datos = await prepararMaterial(tx, linea)
+  if (!(await idLibre(tx.ordenMaterial, datos.id))) delete datos.id
+  await tx.ordenMaterial.create({ data: datos })
   await recalcularTotalesOrden(tx, linea.ordenId)
 }
 
 async function restaurarLineaManoObra(tx, { linea }) {
   const orden = await tx.ordenReparacion.findUnique({ where: { id: linea.ordenId } })
   if (!orden) throw new ErrorPapelera('No se puede restaurar la línea porque su orden ya no existe.')
-  await tx.ordenManoObra.create({ data: linea })
+  const datos = { ...linea }
+  if (!(await idLibre(tx.ordenManoObra, datos.id))) delete datos.id
+  await tx.ordenManoObra.create({ data: datos })
   await recalcularTotalesOrden(tx, linea.ordenId)
 }
 
@@ -253,10 +334,31 @@ async function recalcularTotalesOrden(tx, ordenId) {
   })
 }
 
-async function restaurarOperacion(tx, { operacion }) {
-  await tx.operacionManoObra.create({ data: operacion })
+async function restaurarOperacion(tx, { operacion }, avisos = []) {
+  const datos = { ...operacion }
+  const codigo = await siguienteTextoLibre(
+    datos.codigo,
+    async (c) => (await tx.operacionManoObra.findUnique({ where: { codigo: c } })) !== null,
+  )
+  if (codigo !== datos.codigo) {
+    avisos.push(`El código ${datos.codigo} ya lo usa otra operación: se ha restaurado como ${codigo}.`)
+    datos.codigo = codigo
+  }
+  if (!(await idLibre(tx.operacionManoObra, datos.id))) delete datos.id
+  await tx.operacionManoObra.create({ data: datos })
 }
 
-async function restaurarMecanico(tx, { mecanico }) {
-  await tx.mecanico.create({ data: mecanico })
+async function restaurarMecanico(tx, { mecanico }, avisos = []) {
+  const datos = { ...mecanico }
+  const nombre = await siguienteTextoLibre(
+    datos.nombre,
+    async (n) => (await tx.mecanico.findUnique({ where: { nombre: n } })) !== null,
+    (b, n) => `${b} (${n})`,
+  )
+  if (nombre !== datos.nombre) {
+    avisos.push(`El nombre «${datos.nombre}» ya lo usa otro mecánico: se ha restaurado como «${nombre}».`)
+    datos.nombre = nombre
+  }
+  if (!(await idLibre(tx.mecanico, datos.id))) delete datos.id
+  await tx.mecanico.create({ data: datos })
 }
