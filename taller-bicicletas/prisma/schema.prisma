@@ -248,6 +248,20 @@ model OperacionManoObra {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// PAPELERA (instantáneas de lo borrado, para poder deshacer)
+// ═══════════════════════════════════════════════════════════════
+model Papelera {
+  id            Int       @id @default(autoincrement())
+  tipo          String    // cliente, bicicleta, articulo, articulos-lote, orden, material-orden, mano-obra-orden, operacion, mecanico
+  descripcion   String    // Texto legible: «Cliente #101 Adam Raga»
+  datos         String    // Instantánea del registro (y de lo que cuelga de él) en JSON
+  usuario       String?   // Quién lo borró
+  createdAt     DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════
 // COPIAS DE SEGURIDAD
 // ═══════════════════════════════════════════════════════════════
 model Backup {
