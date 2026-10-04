@@ -408,8 +408,10 @@ function Crear-Actualizar-Env {
 function Ejecutar-EnApp {
   param([string]$Descripcion, [string]$LineaComando, [string]$Log)
   Paso $Descripcion
-  $comando = 'cd /d "{0}" && {1}' -f $script:RutaAppTaller, $LineaComando
-  $salida = & cmd.exe /c $comando 2>&1
+  # La redirección 2>&1 va dentro de cmd: con $ErrorActionPreference='Stop', Windows PowerShell 5.1
+  # convierte en error fatal cualquier línea que un programa escriba por stderr (p. ej. los avisos de npm).
+  $comando = 'cd /d "{0}" && {1} 2>&1' -f $script:RutaAppTaller, $LineaComando
+  $salida = & cmd.exe /c $comando
   $codigo = $LASTEXITCODE
   if ($salida) { $salida | ForEach-Object { Write-Host ("   " + $_) -ForegroundColor DarkGray } }
   if ($salida) { ($salida | Out-String) | Add-Content -LiteralPath $Log -Encoding UTF8 }
