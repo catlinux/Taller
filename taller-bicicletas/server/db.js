@@ -53,12 +53,23 @@ async function crearBaseDemo() {
   await execFileAsync(process.execPath, ['scripts/seed-demo.js'], opciones)
 }
 
+// Pone la base de prueba al día con el esquema actual (solo cambios aditivos: si
+// el esquema creció desde que se creó demo.db, p. ej. una columna nueva, la añade).
+async function sincronizarEsquemaDemo() {
+  const env = { ...process.env, DATABASE_URL: 'file:./demo.db' }
+  const prismaCli = path.join(RAIZ, 'node_modules', 'prisma', 'build', 'index.js')
+  await execFileAsync(process.execPath, [prismaCli, 'db', 'push', '--skip-generate'], { cwd: RAIZ, env })
+}
+
 // Cambia de base en caliente: crea la demo si falta, abre el cliente nuevo,
 // cierra el anterior y guarda el modo para los próximos arranques.
 export async function cambiarModo(modo) {
   if (modo !== 'real' && modo !== 'demo') throw new Error('Modo no válido')
   if (modo === modoActivo) return modoActivo
-  if (modo === 'demo' && !demoExiste()) await crearBaseDemo()
+  if (modo === 'demo') {
+    if (demoExiste()) await sincronizarEsquemaDemo()
+    else await crearBaseDemo()
+  }
 
   const anterior = cliente
   cliente = crearCliente(modo)
