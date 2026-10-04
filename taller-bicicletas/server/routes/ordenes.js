@@ -448,7 +448,7 @@ router.get('/', async (req, res, next) => {
       if (q !== '') {
         where.OR = [
           { numeroOrden: { contains: q } },
-          { cliente: { is: { nombre: { contains: q } } } },
+          { cliente: { is: { OR: [{ nombre: { contains: q } }, { apellidos: { contains: q } }] } } },
           { bicicleta: { is: { OR: [
             { marca: { contains: q } },
             { modelo: { contains: q } },

@@ -26,6 +26,11 @@ function fechaPrevistaVencida(orden) {
   return prevista < hoy
 }
 
+// Nombre y apellidos del cliente (en los datos importados los apellidos pueden venir vacíos).
+function nombreCompleto(cliente) {
+  return [cliente?.nombre, cliente?.apellidos].filter(Boolean).join(' ')
+}
+
 export default function Ordenes() {
   const { token } = useAuth()
   const navigate = useNavigate()
@@ -91,11 +96,11 @@ export default function Ordenes() {
     },
     {
       clave: 'cliente', titulo: 'Cliente', ancho: '40%',
-      valor: (o) => o.cliente?.nombre,
+      valor: (o) => nombreCompleto(o.cliente),
       render: (o) => (
-        <div className="whitespace-nowrap" title={`#${o.cliente?.numeroCliente ?? ''} ${o.cliente?.nombre ?? ''}`.trim()}>
+        <div className="whitespace-nowrap" title={`#${o.cliente?.numeroCliente ?? ''} ${nombreCompleto(o.cliente)}`.trim()}>
           <span className="block text-slate-300">#{o.cliente?.numeroCliente}</span>
-          <span className="block text-slate-400">{o.cliente?.nombre}</span>
+          <span className="block text-slate-400">{nombreCompleto(o.cliente)}</span>
         </div>
       ),
     },
