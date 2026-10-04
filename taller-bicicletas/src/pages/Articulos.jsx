@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useAjustes } from '../context/AjustesContext.jsx'
+import { useDeshacer } from '../context/DeshacerContext.jsx'
 import ArticuloModal from '../components/ArticuloModal.jsx'
 import ArticulosTabs from '../components/ArticulosTabs.jsx'
 import DataTable from '../components/DataTable.jsx'
@@ -65,6 +66,7 @@ function AjusteStockModal({ articulo, onSubmit, onClose, isSaving }) {
 export default function Articulos() {
   const { token } = useAuth()
   const { ajustes } = useAjustes()
+  const { mostrarDeshacer } = useDeshacer()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [articuloEditando, setArticuloEditando] = useState(null)
@@ -83,7 +85,17 @@ export default function Articulos() {
   const refrescar = () => queryClient.invalidateQueries(['articulos'])
   const crear = useMutation((datos) => apiPost('/api/articulos', token, datos), { onSuccess: () => { refrescar(); cerrarModal() }, onError: (e) => setErrorAccion(e.message) })
   const actualizar = useMutation(({ id, datos }) => apiPut(`/api/articulos/${id}`, token, datos), { onSuccess: () => { refrescar(); cerrarModal() }, onError: (e) => setErrorAccion(e.message) })
-  const eliminar = useMutation((articulo) => apiDelete(`/api/articulos/${articulo.id}`, token), { onSuccess: refrescar, onError: (e) => setErrorAccion(e.message) })
+  const eliminar = useMutation((articulo) => apiDelete(`/api/articulos/${articulo.id}`, token), {
+    onSuccess: (resultado, articulo) => {
+      refrescar()
+      mostrarDeshacer({
+        descripcion: `el artículo ${articulo.referencia}`,
+        papeleraId: resultado?.papeleraId,
+        onRestaurar: refrescar,
+      })
+    },
+    onError: (e) => setErrorAccion(e.message),
+  })
   const ajustarStock = useMutation(({ id, datos }) => apiPatch(`/api/articulos/${id}/stock`, token, datos), { onSuccess: () => { refrescar(); cerrarAjuste() }, onError: (e) => setErrorAccion(e.message) })
   function cerrarModal() { setModalAbierto(false); setArticuloEditando(null); setErrorAccion('') }
   function cerrarAjuste() { setArticuloAjustando(null); setErrorAccion('') }
@@ -168,7 +180,7 @@ export default function Articulos() {
   function guardar(datos) { setErrorAccion(''); if (articuloEditando) actualizar.mutate({ id: articuloEditando.id, datos }); else crear.mutate(datos) }
   function abrirAjuste(articulo) { setArticuloAjustando(articulo); setErrorAccion('') }
   function aplicarAjuste(datos) { setErrorAccion(''); ajustarStock.mutate({ id: articuloAjustando.id, datos }) }
-  function confirmarEliminar(articulo) { if (window.confirm(`¿Seguro que quieres eliminar el artículo ${articulo.referencia}?`)) { setErrorAccion(''); eliminar.mutate(articulo) } }
+  function confirmarEliminar(articulo) { if (window.confirm(`¿Seguro que quieres eliminar el artículo ${articulo.referencia}? Podrás deshacerlo desde la papelera.`)) { setErrorAccion(''); eliminar.mutate(articulo) } }
   const guardando = crear.isLoading || actualizar.isLoading
 
   // Exporta a Excel los artículos que coinciden con la búsqueda actual.

@@ -1,6 +1,7 @@
 import { Navigate, NavLink, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import MecanicosPanel from '../components/config/MecanicosPanel.jsx'
+import PapeleraPanel from '../components/config/PapeleraPanel.jsx'
 import TablasPanel from '../components/config/TablasPanel.jsx'
 import AparienciaPanel from '../components/config/AparienciaPanel.jsx'
 import TallerPanel from '../components/config/TallerPanel.jsx'
@@ -22,6 +23,7 @@ import {
   IconTaller,
   IconSeguridad,
   IconActualizar,
+  IconPapelera,
 } from '../components/Icons.jsx'
 
 // Definición de las pestañas de Configuración. `soloAdmin` restringe su
@@ -30,6 +32,7 @@ const PESTANAS = [
   { id: 'mecanicos', etiqueta: 'Mecánicos', Icono: IconClientes, soloAdmin: false, contenido: <MecanicosPanel /> },
   { id: 'empresa', etiqueta: 'Empresa', Icono: IconEmpresa, soloAdmin: false, contenido: <Empresa embebido /> },
   { id: 'operaciones', etiqueta: 'Operaciones', Icono: IconOrdenes, soloAdmin: false, contenido: <Operaciones embebido /> },
+  { id: 'papelera', etiqueta: 'Papelera', Icono: IconPapelera, soloAdmin: false, contenido: <PapeleraPanel /> },
   {
     id: 'usuarios', etiqueta: 'Usuarios', Icono: IconUsuario, soloAdmin: true, contenido: <Usuarios embebido />,
   },

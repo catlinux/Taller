@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useDeshacer } from '../context/DeshacerContext.jsx'
 import BicicletaModal from '../components/BicicletaModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
@@ -12,6 +13,7 @@ export default function Bicicletas() {
   const { token } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { mostrarDeshacer } = useDeshacer()
   const [search, setSearch] = useState('')
   const [clienteId, setClienteId] = useState('')
   const [bicicletaEditando, setBicicletaEditando] = useState(null)
@@ -22,7 +24,17 @@ export default function Bicicletas() {
   const refrescar = () => queryClient.invalidateQueries(['bicicletas'])
   const crear = useMutation((datos) => apiPost('/api/bicicletas', token, datos), { onSuccess: () => { refrescar(); cerrarModal() }, onError: (e) => setErrorAccion(e.message) })
   const actualizar = useMutation(({ id, datos }) => apiPut(`/api/bicicletas/${id}`, token, datos), { onSuccess: () => { refrescar(); cerrarModal() }, onError: (e) => setErrorAccion(e.message) })
-  const eliminar = useMutation((bicicleta) => apiDelete(`/api/bicicletas/${bicicleta.id}`, token), { onSuccess: refrescar, onError: (e) => setErrorAccion(e.message) })
+  const eliminar = useMutation((bicicleta) => apiDelete(`/api/bicicletas/${bicicleta.id}`, token), {
+    onSuccess: (resultado, bicicleta) => {
+      refrescar()
+      mostrarDeshacer({
+        descripcion: `${bicicleta.marca ?? ''} ${bicicleta.modelo ?? ''}`.trim(),
+        papeleraId: resultado?.papeleraId,
+        onRestaurar: refrescar,
+      })
+    },
+    onError: (e) => setErrorAccion(e.message),
+  })
   function cerrarModal() { setModalAbierto(false); setBicicletaEditando(null); setErrorAccion('') }
   const filtrados = useMemo(() => {
     const termino = search.trim()

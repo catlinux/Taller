@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { useDeshacer } from '../../context/DeshacerContext.jsx'
 import DataTable from '../DataTable.jsx'
 import { IconMas } from '../Icons.jsx'
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api.js'
@@ -44,6 +45,7 @@ function ModalMecanico({ mecanico, onSubmit, onClose, guardando }) {
 export default function MecanicosPanel() {
   const { token, user } = useAuth()
   const esAdmin = user?.rol === 'admin'
+  const { mostrarDeshacer } = useDeshacer()
   const queryClient = useQueryClient()
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -68,8 +70,15 @@ export default function MecanicosPanel() {
     onSuccess: refrescar,
     onError: (e) => setErrorAccion(e.message),
   })
-  const eliminar = useMutation((id) => apiDelete(`/api/mecanicos/${id}`, token), {
-    onSuccess: refrescar,
+  const eliminar = useMutation((mecanico) => apiDelete(`/api/mecanicos/${mecanico.id}`, token), {
+    onSuccess: (resultado, mecanico) => {
+      refrescar()
+      mostrarDeshacer({
+        descripcion: `el mecánico ${mecanico.nombre}`,
+        papeleraId: resultado?.papeleraId,
+        onRestaurar: refrescar,
+      })
+    },
     onError: (e) => setErrorAccion(e.message),
   })
 
@@ -96,9 +105,9 @@ export default function MecanicosPanel() {
   }
 
   function confirmarEliminar(mecanico) {
-    if (window.confirm(`¿Seguro que quieres eliminar al mecánico ${mecanico.nombre}?`)) {
+    if (window.confirm(`¿Seguro que quieres eliminar al mecánico ${mecanico.nombre}? Podrás deshacerlo desde la papelera.`)) {
       setErrorAccion('')
-      eliminar.mutate(mecanico.id)
+      eliminar.mutate(mecanico)
     }
   }
 

@@ -209,6 +209,17 @@ export function IconPapelera(props) {
   )
 }
 
+// Deshacer (restaurar un elemento recién eliminado).
+export function IconDeshacer(props) {
+  return (
+    <Icon {...props}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11" />
+    </Icon>
+  )
+}
+
+
 // Aviso (triángulo).
 export function IconAviso(props) {
   return (

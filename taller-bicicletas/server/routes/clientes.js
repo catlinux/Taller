@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware } from './auth.js'
+import { guardarEnPapelera, descripcionCliente } from '../lib/papelera.js'
 import { coincideTexto } from '../lib/texto.js'
 
 const router = Router()
@@ -216,12 +217,22 @@ router.delete('/:id', async (req, res, next) => {
       })
     }
 
-    await prisma.$transaction([
-      prisma.bicicleta.deleteMany({ where: { clienteId: id } }),
-      prisma.cliente.delete({ where: { id } }),
-    ])
+    // Archiva el cliente junto con sus bicicletas para poder restaurarlo entero.
+    const bicicletas = await prisma.bicicleta.findMany({ where: { clienteId: id } })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'cliente',
+        descripcion: descripcionCliente(existente),
+        datos: { cliente: existente, bicicletas },
+        usuario,
+      })
+      await tx.bicicleta.deleteMany({ where: { clienteId: id } })
+      await tx.cliente.delete({ where: { id } })
+      return creada
+    })
 
-    return res.json({ success: true })
+    return res.json({ success: true, papeleraId })
   } catch (error) {
     return next(error)
   }

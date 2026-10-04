@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
+import { guardarEnPapelera, descripcionMecanico } from '../lib/papelera.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -85,8 +86,18 @@ router.delete('/:id', roleMiddleware('admin'), async (req, res, next) => {
     if (!existente) return res.status(404).json({ error: 'Mecánico no encontrado' })
     const ordenesAsignadas = await prisma.ordenReparacion.count({ where: { mecanicoId: id } })
     if (ordenesAsignadas > 0) return res.status(409).json({ error: 'Tiene órdenes asignadas; desactívalo en lugar de borrarlo' })
-    await prisma.mecanico.delete({ where: { id } })
-    return res.json({ success: true })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'mecanico',
+        descripcion: descripcionMecanico(existente),
+        datos: { mecanico: existente },
+        usuario,
+      })
+      await tx.mecanico.delete({ where: { id } })
+      return creada
+    })
+    return res.json({ success: true, papeleraId })
   } catch (error) { return next(error) }
 })
 

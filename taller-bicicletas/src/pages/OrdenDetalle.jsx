@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useAjustes } from '../context/AjustesContext.jsx'
-import { apiGet, apiPost, apiPut } from '../lib/api.js'
+import { useDeshacer } from '../context/DeshacerContext.jsx'
+import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api.js'
 import { ESTADOS, TIPOS_REPARACION } from '../lib/ordenes.js'
 import { FORMAS_PAGO } from '../lib/pagos.js'
 import ClienteSelector from '../components/orden/ClienteSelector.jsx'
@@ -85,6 +86,7 @@ function Tarjeta({ titulo, descripcion, interno = false, className = '', childre
 export default function OrdenDetalle() {
   const { token } = useAuth()
   const { ajustes } = useAjustes()
+  const { mostrarDeshacer } = useDeshacer()
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -207,6 +209,22 @@ export default function OrdenDetalle() {
     },
   )
 
+  const eliminarOrden = useMutation(
+    () => apiDelete(`/api/ordenes/${id}`, token),
+    {
+      onSuccess: (resultado) => {
+        queryClient.invalidateQueries(['ordenes'])
+        mostrarDeshacer({
+          descripcion: `la orden ${form.numeroOrden || id}`,
+          papeleraId: resultado?.papeleraId,
+          onRestaurar: () => queryClient.invalidateQueries(['ordenes']),
+        })
+        navigate('/ordenes')
+      },
+      onError: (e) => setErrorAccion(e.message),
+    },
+  )
+
   function construirPayload() {
     return {
       clienteId: Number(cliente?.id),
@@ -307,6 +325,13 @@ export default function OrdenDetalle() {
     }
     if (!window.confirm('¿Duplicar esta orden? Se creará una copia nueva en estado Presupuesto.')) return
     duplicar.mutate()
+  }
+
+  // Elimina la orden actual (pasa a la papelera, se puede deshacer) y vuelve al listado.
+  function alEliminarOrden() {
+    setErrorAccion('')
+    if (!window.confirm(`¿Seguro que quieres eliminar la orden ${form.numeroOrden || ''}? Podrás deshacerlo desde la papelera.`)) return
+    eliminarOrden.mutate()
   }
 
   if (!esNueva && isLoading) {
@@ -464,6 +489,9 @@ export default function OrdenDetalle() {
                 <button type="button" onClick={alDescargarPdf} className="rounded-lg border border-antracita-600 px-4 py-2.5 text-sm text-slate-300 hover:bg-antracita-700">Descargar PDF</button>
                 <button type="button" onClick={alDuplicar} disabled={duplicar.isLoading} className="rounded-lg border border-antracita-600 px-4 py-2.5 text-sm text-slate-300 hover:bg-antracita-700 disabled:opacity-50">
                   {duplicar.isLoading ? 'Duplicando…' : 'Duplicar'}
+                </button>
+                <button type="button" onClick={alEliminarOrden} disabled={eliminarOrden.isLoading} className="rounded-lg border border-rose-500/50 px-4 py-2.5 text-sm text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">
+                  {eliminarOrden.isLoading ? 'Eliminando…' : 'Eliminar'}
                 </button>
               </>
             )}

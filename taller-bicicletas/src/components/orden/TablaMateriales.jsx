@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api.js'
 import { aNumero, formatearEuros } from '../../lib/ordenes.js'
 import { coincideTexto } from '../../lib/texto.js'
 import { useAjustes } from '../../context/AjustesContext.jsx'
+import { useDeshacer } from '../../context/DeshacerContext.jsx'
 
 const inputClass = 'mt-1.5 w-full rounded-lg border border-antracita-600 bg-antracita-900 px-3 py-2.5 text-white outline-none focus:border-azul-400'
 const celdaClass = 'w-full rounded-md border border-transparent bg-antracita-900/60 px-2 py-2 text-white outline-none focus:border-azul-400'
@@ -64,6 +65,7 @@ function CeldaEditable({ valor, onCommit, numerico = false, formato, title, clas
 export default function TablaMateriales({ orden, token }) {
   const queryClient = useQueryClient()
   const { ajustes } = useAjustes()
+  const { mostrarDeshacer } = useDeshacer()
   const ordenId = orden.id
   const claveOrden = ['orden', String(ordenId)]
   const materiales = orden.materiales ?? []
@@ -112,8 +114,18 @@ export default function TablaMateriales({ orden, token }) {
   )
 
   const eliminarLinea = useMutation(
-    (materialId) => apiDelete(`/api/ordenes/${ordenId}/materiales/${materialId}`, token),
-    { onSuccess: guardarEnCache, onError: (e) => setErrorAccion(e.message) },
+    (linea) => apiDelete(`/api/ordenes/${ordenId}/materiales/${linea.id}`, token),
+    {
+      onSuccess: (resultado, linea) => {
+        guardarEnCache(resultado)
+        mostrarDeshacer({
+          descripcion: `el material «${linea.descripcion}»`,
+          papeleraId: resultado?.papeleraId,
+          onRestaurar: () => queryClient.invalidateQueries(claveOrden),
+        })
+      },
+      onError: (e) => setErrorAccion(e.message),
+    },
   )
 
   // Confirma la edición de un campo. Devuelve false si no hay nada que guardar.
@@ -154,9 +166,9 @@ export default function TablaMateriales({ orden, token }) {
   }
 
   function confirmarEliminar(linea) {
-    if (window.confirm(`¿Eliminar el material «${linea.descripcion}»?`)) {
+    if (window.confirm(`¿Eliminar el material «${linea.descripcion}»? Podrás deshacerlo desde la papelera.`)) {
       setErrorAccion('')
-      eliminarLinea.mutate(linea.id)
+      eliminarLinea.mutate(linea)
     }
   }
 

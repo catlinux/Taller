@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useDeshacer } from '../context/DeshacerContext.jsx'
 import OperacionModal from '../components/OperacionModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
@@ -10,6 +11,7 @@ import { coincideTexto } from '../lib/texto.js'
 export default function Operaciones({ embebido = false }) {
   const { token, user } = useAuth()
   const esAdmin = user?.rol === 'admin'
+  const { mostrarDeshacer } = useDeshacer()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [operacionEditando, setOperacionEditando] = useState(null)
@@ -25,7 +27,15 @@ export default function Operaciones({ embebido = false }) {
     onSuccess: () => { refrescar(); cerrarModal() }, onError: (e) => setErrorAccion(e.message),
   })
   const eliminar = useMutation((operacion) => apiDelete(`/api/operaciones/${operacion.id}`, token), {
-    onSuccess: refrescar, onError: (e) => setErrorAccion(e.message),
+    onSuccess: (resultado, operacion) => {
+      refrescar()
+      mostrarDeshacer({
+        descripcion: `la operación ${operacion.codigo}`,
+        papeleraId: resultado?.papeleraId,
+        onRestaurar: refrescar,
+      })
+    },
+    onError: (e) => setErrorAccion(e.message),
   })
   function cerrarModal() { setModalAbierto(false); setOperacionEditando(null); setErrorAccion('') }
 
@@ -42,7 +52,7 @@ export default function Operaciones({ embebido = false }) {
     else crear.mutate(datos)
   }
   function confirmarEliminar(operacion) {
-    if (window.confirm(`¿Seguro que quieres eliminar la operación ${operacion.codigo}?`)) {
+    if (window.confirm(`¿Seguro que quieres eliminar la operación ${operacion.codigo}? Podrás deshacerlo desde la papelera.`)) {
       setErrorAccion('')
       eliminar.mutate(operacion)
     }

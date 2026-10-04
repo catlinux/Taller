@@ -6,6 +6,7 @@ import { sinStockDesdeNuevo } from '../lib/stock.js'
 import { filtrarObsoletos } from '../lib/obsoletos.js'
 import { agruparConsumo, resolverEstados, AGRUPACIONES, rangoDeFechas, parseFechaISO } from '../lib/consumo.js'
 import { coincideTexto } from '../lib/texto.js'
+import { guardarEnPapelera, descripcionArticulo } from '../lib/papelera.js'
 
 const router = Router()
 
@@ -449,8 +450,31 @@ router.delete('/lote', roleMiddleware('admin'), async (req, res, next) => {
       }
     }
 
-    const resultado = await prisma.articulo.deleteMany({ where: { id: { in: ids } } })
-    return res.json({ eliminados: resultado.count })
+    // Guarda una instantánea de cada artículo (con las líneas de orden que lo
+    // usaban) antes de borrarlos: el borrado en lote no pasa por /:id.
+    const articulos = await prisma.articulo.findMany({ where: { id: { in: ids } } })
+    const instantaneas = []
+    for (const articulo of articulos) {
+      const lineas = await prisma.ordenMaterial.findMany({ where: { articuloId: articulo.id }, select: { id: true } })
+      instantaneas.push({ articulo, lineas: lineas.map((linea) => linea.id) })
+    }
+
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const resultado = await prisma.$transaction(async (tx) => {
+      let papeleraId = null
+      if (instantaneas.length > 0) {
+        const creada = await guardarEnPapelera(tx, {
+          tipo: 'articulos-lote',
+          descripcion: `${instantaneas.length} artículos eliminados en lote`,
+          datos: { articulos: instantaneas },
+          usuario,
+        })
+        papeleraId = creada.id
+      }
+      const borrado = await tx.articulo.deleteMany({ where: { id: { in: ids } } })
+      return { eliminados: borrado.count, papeleraId }
+    })
+    return res.json(resultado)
   } catch (error) {
     return next(error)
   }
@@ -469,8 +493,20 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Artículo no encontrado' })
     }
 
-    await prisma.articulo.delete({ where: { id } })
-    return res.json({ success: true })
+    // Archiva el artículo y las líneas de orden que lo usaban antes de borrarlo.
+    const lineas = await prisma.ordenMaterial.findMany({ where: { articuloId: id }, select: { id: true } })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'articulo',
+        descripcion: descripcionArticulo(existente),
+        datos: { articulo: existente, lineas: lineas.map((linea) => linea.id) },
+        usuario,
+      })
+      await tx.articulo.delete({ where: { id } })
+      return creada
+    })
+    return res.json({ success: true, papeleraId })
   } catch (error) {
     return next(error)
   }

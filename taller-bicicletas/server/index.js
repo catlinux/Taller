@@ -17,11 +17,13 @@ import operacionesRoutes from './routes/operaciones.js'
 import ajustesRoutes, { obtenerAjustes } from './routes/ajustes.js'
 import modoRoutes from './routes/modo.js'
 import actualizacionesRoutes from './routes/actualizaciones.js'
+import papeleraRoutes from './routes/papelera.js'
 import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
 import { migrarPagos } from './lib/pagos.js'
 import { rellenarSinStock } from './lib/stock.js'
+import { purgarAntiguas } from './lib/papelera.js'
 import { ejecutarComprobacion } from './lib/actualizaciones.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -68,6 +70,7 @@ app.use('/api/ajustes', ajustesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/modo', modoRoutes)
 app.use('/api/actualizaciones', actualizacionesRoutes)
+app.use('/api/papelera', papeleraRoutes)
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {
@@ -110,6 +113,17 @@ migrarPagos(prisma).catch((error) => {
 rellenarSinStock(prisma).catch((error) => {
   console.error('Error al rellenar la fecha sin stock de los artículos:', error)
 })
+
+// Poda la papelera: borra definitivamente lo que lleve más de 30 días archivado.
+// Se ejecuta al arrancar y luego cada 24 horas.
+purgarAntiguas(prisma).catch((error) => {
+  console.error('Error al purgar la papelera:', error)
+})
+setInterval(() => {
+  purgarAntiguas(prisma).catch((error) => {
+    console.error('Error al purgar la papelera:', error)
+  })
+}, 24 * 60 * 60 * 1000).unref()
 
 // Copia de seguridad automática: una al arrancar y luego cada 24 horas.
 const INTERVALO_BACKUP_MS = 24 * 60 * 60 * 1000

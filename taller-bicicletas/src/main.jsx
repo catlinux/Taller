@@ -6,6 +6,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { AjustesProvider } from './context/AjustesContext.jsx'
 import { BloqueoProvider } from './context/BloqueoContext.jsx'
+import { DeshacerProvider } from './context/DeshacerContext.jsx'
 import { registerSW } from 'virtual:pwa-register'
 import { aplicarModo, leerModo } from './lib/modoColor.js'
 import '@fontsource-variable/inter'
@@ -61,7 +62,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <AuthProvider>
           <AjustesProvider>
             <BloqueoProvider>
-              <App />
+              <DeshacerProvider>
+                <App />
+              </DeshacerProvider>
             </BloqueoProvider>
           </AjustesProvider>
         </AuthProvider>

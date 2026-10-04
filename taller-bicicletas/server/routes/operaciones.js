@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
+import { guardarEnPapelera, descripcionOperacion } from '../lib/papelera.js'
 import { coincideTexto } from '../lib/texto.js'
 
 const router = Router()
@@ -111,8 +112,18 @@ router.delete('/:id', roleMiddleware('admin'), async (req, res, next) => {
     if (id === null) return res.status(400).json({ error: 'Identificador de operación no válido' })
     const existente = await prisma.operacionManoObra.findUnique({ where: { id } })
     if (!existente) return res.status(404).json({ error: 'Operación no encontrada' })
-    await prisma.operacionManoObra.delete({ where: { id } })
-    return res.json({ success: true })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'operacion',
+        descripcion: descripcionOperacion(existente),
+        datos: { operacion: existente },
+        usuario,
+      })
+      await tx.operacionManoObra.delete({ where: { id } })
+      return creada
+    })
+    return res.json({ success: true, papeleraId })
   } catch (error) { return next(error) }
 })
 

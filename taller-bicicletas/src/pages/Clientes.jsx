@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useDeshacer } from '../context/DeshacerContext.jsx'
 import ClienteModal from '../components/ClienteModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
@@ -12,6 +13,7 @@ import { coincideTexto } from '../lib/texto.js'
 export default function Clientes() {
   const { token } = useAuth()
   const queryClient = useQueryClient()
+  const { mostrarDeshacer } = useDeshacer()
   const [search, setSearch] = useState('')
   const [clienteEditando, setClienteEditando] = useState(null)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -27,7 +29,15 @@ export default function Clientes() {
     onSuccess: () => { refrescar(); cerrarModal() }, onError: (e) => setErrorAccion(e.message),
   })
   const eliminar = useMutation((cliente) => apiDelete(`/api/clientes/${cliente.id}`, token), {
-    onSuccess: refrescar, onError: (e) => setErrorAccion(e.message),
+    onSuccess: (resultado, cliente) => {
+      refrescar()
+      mostrarDeshacer({
+        descripcion: `${cliente.nombre}${cliente.apellidos ? ` ${cliente.apellidos}` : ''}`,
+        papeleraId: resultado?.papeleraId,
+        onRestaurar: refrescar,
+      })
+    },
+    onError: (e) => setErrorAccion(e.message),
   })
   function cerrarModal() { setModalAbierto(false); setClienteEditando(null); setErrorAccion('') }
 

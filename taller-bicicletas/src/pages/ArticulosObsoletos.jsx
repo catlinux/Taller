@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useDeshacer } from '../context/DeshacerContext.jsx'
 import ArticulosTabs from '../components/ArticulosTabs.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconDescargar, IconPapelera } from '../components/Icons.jsx'
@@ -50,6 +51,7 @@ function construirQuery(params) {
 // movimientos, permite filtrarlos, exportarlos y (solo admin) eliminarlos en lote.
 export default function ArticulosObsoletos() {
   const { token, user } = useAuth()
+  const { mostrarDeshacer } = useDeshacer()
   const queryClient = useQueryClient()
   const esAdmin = user?.rol === 'admin'
 
@@ -134,6 +136,11 @@ export default function ArticulosObsoletos() {
         setConfirmar(false)
         setErrorAccion('')
         setAviso(`Se ${resultado.eliminados === 1 ? 'ha eliminado 1 artículo' : `han eliminado ${resultado.eliminados} artículos`}.`)
+        mostrarDeshacer({
+          descripcion: resultado.eliminados === 1 ? '1 artículo' : `${resultado.eliminados} artículos`,
+          papeleraId: resultado?.papeleraId,
+          onRestaurar: () => queryClient.invalidateQueries(['articulos']),
+        })
         queryClient.invalidateQueries(['articulos'])
       },
       onError: (fallo) => {
@@ -351,7 +358,7 @@ export default function ArticulosObsoletos() {
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/70 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmar(false) }}>
           <section role="dialog" aria-modal="true" aria-labelledby="obsoletos-eliminar-title" className="my-auto w-full max-w-md rounded-2xl border border-antracita-700 bg-antracita-800 p-6 shadow-2xl">
             <h2 id="obsoletos-eliminar-title" className="text-xl font-semibold text-white">Eliminar artículos</h2>
-            <p className="mt-3 text-sm text-slate-300">Se van a eliminar {seleccionadas.size} {seleccionadas.size === 1 ? 'artículo' : 'artículos'}. Esta acción no se puede deshacer.</p>
+            <p className="mt-3 text-sm text-slate-300">Se van a eliminar {seleccionadas.size} {seleccionadas.size === 1 ? 'artículo' : 'artículos'}. Podrás deshacerlo desde la papelera.</p>
             <p className="mt-2 text-sm text-slate-400">Las órdenes antiguas conservarán sus líneas (se quedarán sin enlazar, pero mantendrán la referencia y la descripción). Te recomendamos exportar la lista a Excel antes de continuar.</p>
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" className="btn-secondary" onClick={() => setConfirmar(false)}>Cancelar</button>

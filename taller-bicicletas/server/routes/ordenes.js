@@ -4,6 +4,7 @@ import { authMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
 import { FORMAS_PAGO } from '../lib/pagos.js'
 import { coincideTexto } from '../lib/texto.js'
+import { guardarEnPapelera, descripcionOrden, descripcionLineaMaterial, descripcionLineaManoObra } from '../lib/papelera.js'
 
 const router = Router()
 
@@ -630,13 +631,27 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(400).json({ error: 'Identificador de orden no válido' })
     }
 
-    const existente = await prisma.ordenReparacion.findUnique({ where: { id } })
+    const existente = await prisma.ordenReparacion.findUnique({
+      where: { id },
+      include: { materiales: true, manoObra: true },
+    })
     if (!existente) {
       return res.status(404).json({ error: 'Orden no encontrada' })
     }
 
-    await prisma.ordenReparacion.delete({ where: { id } })
-    return res.json({ success: true })
+    const { materiales, manoObra, ...orden } = existente
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'orden',
+        descripcion: descripcionOrden(existente),
+        datos: { orden, materiales, manoObra },
+        usuario,
+      })
+      await tx.ordenReparacion.delete({ where: { id } })
+      return creada
+    })
+    return res.json({ success: true, papeleraId })
   } catch (error) {
     return next(error)
   }
@@ -703,9 +718,19 @@ router.delete('/:id/materiales/:materialId', async (req, res, next) => {
       return res.status(404).json({ error: 'Material no encontrado en la orden' })
     }
 
-    await prisma.ordenMaterial.delete({ where: { id: materialId } })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'material-orden',
+        descripcion: descripcionLineaMaterial(material, orden.numeroOrden),
+        datos: { linea: material },
+        usuario,
+      })
+      await tx.ordenMaterial.delete({ where: { id: materialId } })
+      return creada
+    })
     const resultado = await recalcularOrden(id)
-    return res.json(resultado)
+    return res.json({ ...resultado, papeleraId })
   } catch (error) {
     return next(error)
   }
@@ -808,9 +833,19 @@ router.delete('/:id/mano-obra/:manoObraId', async (req, res, next) => {
       return res.status(404).json({ error: 'Mano de obra no encontrada en la orden' })
     }
 
-    await prisma.ordenManoObra.delete({ where: { id: manoObraId } })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'mano-obra-orden',
+        descripcion: descripcionLineaManoObra(linea, orden.numeroOrden),
+        datos: { linea },
+        usuario,
+      })
+      await tx.ordenManoObra.delete({ where: { id: manoObraId } })
+      return creada
+    })
     const resultado = await recalcularOrden(id)
-    return res.json(resultado)
+    return res.json({ ...resultado, papeleraId })
   } catch (error) {
     return next(error)
   }

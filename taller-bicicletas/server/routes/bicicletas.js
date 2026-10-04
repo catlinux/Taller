@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware } from './auth.js'
+import { guardarEnPapelera, descripcionBicicleta } from '../lib/papelera.js'
 
 const router = Router()
 
@@ -230,8 +231,18 @@ router.delete('/:id', async (req, res, next) => {
       })
     }
 
-    await prisma.bicicleta.delete({ where: { id } })
-    return res.json({ success: true })
+    const usuario = req.user?.nombre ?? req.user?.username ?? null
+    const { id: papeleraId } = await prisma.$transaction(async (tx) => {
+      const creada = await guardarEnPapelera(tx, {
+        tipo: 'bicicleta',
+        descripcion: descripcionBicicleta(existente),
+        datos: { bicicleta: existente },
+        usuario,
+      })
+      await tx.bicicleta.delete({ where: { id } })
+      return creada
+    })
+    return res.json({ success: true, papeleraId })
   } catch (error) {
     return next(error)
   }
