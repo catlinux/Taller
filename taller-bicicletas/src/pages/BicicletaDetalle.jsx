@@ -42,11 +42,11 @@ export default function BicicletaDetalle() {
   })
 
   if (isLoading) {
-    return <div className="mx-auto max-w-6xl"><p className="text-slate-400">Cargando bicicleta…</p></div>
+    return <div><p className="text-slate-400">Cargando bicicleta…</p></div>
   }
   if (error) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="space-y-4">
         <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{error.message}</p>
         <button type="button" onClick={() => navigate('/bicicletas')} className="rounded-lg border border-antracita-600 px-4 py-2.5 text-sm text-slate-300 hover:bg-antracita-700">Volver al listado</button>
       </div>
@@ -57,7 +57,7 @@ export default function BicicletaDetalle() {
   const cliente = bicicleta.cliente ?? null
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div>
       <button type="button" onClick={() => navigate('/bicicletas')} className="mb-4 text-sm text-azul-300 hover:text-azul-200">← Volver a bicicletas</button>
 
       <div className="mb-8">

@@ -205,7 +205,7 @@ export default function ActualizacionesPanel() {
         </section>
       )}
 
-      {(aplicando || data?.pasos?.length > 0) && (
+      {(aplicando || (data?.resultado && !data.resultado.ok)) && (
         <section className="mt-8 space-y-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Progreso</h3>
 
@@ -245,6 +245,16 @@ export default function ActualizacionesPanel() {
         </p>
       )}
 
+      {data?.modo === 'docker' ? (
+        <section className="mt-8 space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Comprobación automática</h3>
+          <p className="rounded-lg border border-antracita-700 bg-antracita-900/60 px-4 py-3 text-sm text-slate-400">
+            En esta instalación el propio servidor comprueba GitHub cada 30 minutos, así que no hay nada que configurar.
+            Cuando hay una actualización disponible, los administradores ven un aviso en la parte superior de la aplicación.
+          </p>
+        </section>
+      ) : (
+      <>
       <section className="mt-8 space-y-5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Comprobación automática</h3>
 
@@ -293,6 +303,8 @@ export default function ActualizacionesPanel() {
         onGuardar={guardar}
         onDescartar={descartar}
       />
+      </>
+      )}
     </div>
   )
 }

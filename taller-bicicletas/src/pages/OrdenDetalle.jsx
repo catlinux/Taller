@@ -310,11 +310,11 @@ export default function OrdenDetalle() {
   }
 
   if (!esNueva && isLoading) {
-    return <div className="mx-auto max-w-6xl"><p className="text-slate-400">Cargando orden…</p></div>
+    return <div><p className="text-slate-400">Cargando orden…</p></div>
   }
   if (!esNueva && errorCarga) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="space-y-4">
         <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorCarga.message}</p>
         <button type="button" onClick={() => navigate('/ordenes')} className="rounded-lg border border-antracita-600 px-4 py-2.5 text-sm text-slate-300 hover:bg-antracita-700">Volver al listado</button>
       </div>
@@ -322,7 +322,7 @@ export default function OrdenDetalle() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl pb-24">
+    <div className="pb-24">
       <div className="mb-6">
         <p className="text-sm text-azul-300">Taller</p>
         <h1 className="mt-1 text-3xl font-bold">{esNueva ? 'Nueva orden' : `Orden ${form.numeroOrden || ''}`}</h1>
@@ -454,8 +454,8 @@ export default function OrdenDetalle() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-antracita-700 bg-antracita-900/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="fixed inset-x-0 bottom-0 z-30 md:left-[248px] border-t border-antracita-700 bg-antracita-900/95 backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <button type="button" onClick={volver} className="rounded-lg border border-antracita-600 px-4 py-2.5 text-sm text-slate-300 hover:bg-antracita-700">Volver al listado</button>
           <div className="flex flex-wrap items-center gap-2">
             {!esNueva && orden && (
