@@ -108,7 +108,7 @@ export default function Backups({ embebido = false }) {
   )
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {!embebido && (
           <div>

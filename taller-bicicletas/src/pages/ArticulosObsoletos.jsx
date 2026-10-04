@@ -207,7 +207,7 @@ export default function ArticulosObsoletos() {
   ]
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <div className="mb-8">
         <p className="text-sm text-azul-300">Gestión</p>
         <h1 className="mt-1 text-3xl font-bold">Artículos</h1>

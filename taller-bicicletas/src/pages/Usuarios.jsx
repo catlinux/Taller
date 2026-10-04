@@ -188,7 +188,7 @@ export default function Usuarios({ embebido = false }) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {!embebido && <div><p className="text-sm text-azul-300">Administración</p><h1 className="mt-1 text-3xl font-bold">Usuarios</h1><p className="mt-2 text-slate-400">Gestiona los usuarios del taller, sus roles y su acceso.</p></div>}
         <button onClick={abrirCrear} className="rounded-lg bg-azul-500 px-4 py-2.5 text-sm font-semibold text-white mantener-blanco hover:bg-azul-600">+ Nuevo usuario</button>

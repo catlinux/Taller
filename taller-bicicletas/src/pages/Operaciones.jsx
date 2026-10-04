@@ -81,7 +81,7 @@ export default function Operaciones({ embebido = false }) {
   )
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         {!embebido && <div><p className="text-sm text-azul-300">Gestión</p><h1 className="mt-1 text-3xl font-bold">Operaciones</h1><p className="mt-2 text-slate-400">Consulta y administra el catálogo de operaciones de mano de obra.</p></div>}
         {esAdmin && <button onClick={abrirCrear} className="btn-primary"><IconMas size={18} /> Nueva operación</button>}

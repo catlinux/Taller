@@ -57,7 +57,7 @@ export default function Configuracion() {
   const activa = visibles.find((p) => p.id === pestana)
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div>
       <div className="mb-8">
         <p className="text-sm text-azul-300">Sistema</p>
         <h1 className="mt-1 text-3xl font-bold">Configuración</h1>

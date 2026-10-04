@@ -344,7 +344,11 @@ export default function OrdenDetalle() {
                   {conMecanicoAsignado(mecanicos, orden?.mecanico).map((mecanico) => <option key={mecanico.id} value={mecanico.id}>{mecanico.nombre}</option>)}
                 </select>
               </label>
-              <label className="block text-sm text-slate-300">Fecha y hora de entrada
+              <label className="block text-sm text-slate-300">
+                <span className="flex items-center justify-between gap-2">
+                  <span>Fecha y hora de entrada</span>
+                  <button type="button" onClick={() => actualizar('fechaEntrada', aDatetimeLocal(null))} className="text-xs font-medium text-azul-300 hover:underline" title="Poner la fecha y hora actuales">Ahora</button>
+                </span>
                 <input type="datetime-local" value={form.fechaEntrada} onChange={(event) => actualizar('fechaEntrada', event.target.value)} className={inputClass} />
               </label>
               <label className="block text-sm text-slate-300">Fecha prevista de entrega

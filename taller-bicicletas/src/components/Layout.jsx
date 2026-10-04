@@ -173,7 +173,7 @@ export default function Layout() {
         <div onClick={() => setMenuAbierto(false)} className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden" aria-hidden="true" />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-antracita-800 bg-antracita-900 p-4 transition-transform duration-200 md:static md:z-auto md:min-h-screen md:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-antracita-800 bg-antracita-900 p-4 transition-transform duration-200 md:sticky md:top-0 md:z-auto md:h-screen md:shrink-0 md:self-start md:overflow-hidden md:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="mb-6 flex items-center gap-3 px-2">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-1.5 shadow-suave">
             <img src="/icons/logo.png" alt="Logo" className="h-full w-full object-contain" />
