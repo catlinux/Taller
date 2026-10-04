@@ -245,7 +245,7 @@ export default function ActualizacionesPanel() {
         </p>
       )}
 
-      {data?.modo === 'docker' ? (
+      {data?.modo === 'externo' ? (
         <section className="mt-8 space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Comprobación automática</h3>
           <p className="rounded-lg border border-antracita-700 bg-antracita-900/60 px-4 py-3 text-sm text-slate-400">

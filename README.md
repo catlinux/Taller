@@ -40,12 +40,53 @@ Requisitos: Node 20+, Apache 2.4. Actualizar: `bash taller-bicicletas/deploy/upd
 
 La base de datos es `taller-bicicletas/prisma/dev.db` y las copias de seguridad se guardan en `data/backups`; ninguna se versiona.
 
+## Instalación en Windows (servidor en la red local)
+
+En el PC que hará de servidor del taller (Windows 10/11), descarga o clona el repositorio y ejecuta el menú de instalación:
+
+```powershell
+# desde la carpeta del repositorio
+.\instalar.cmd
+# o, sin doble clic:
+powershell -ExecutionPolicy Bypass -File .\instalar.ps1
+```
+
+El menú deja elegir el método:
+
+1. **Windows** — monta el servidor en este PC para la red local (recomendado).
+2. **Docker** — para Windows, Linux o Mac con Docker.
+3. **Linux (servicio systemd)** — se instala desde la propia máquina destino con `bash taller-bicicletas/deploy/instalar.sh`.
+
+La opción 1 (`taller-bicicletas/deploy/windows/instalar-windows.ps1`) se encarga de todo:
+
+- Se eleva a administrador y comprueba **Node 20+** y **Git** (los instala con `winget` si faltan).
+- Clona o actualiza el repositorio (`git fetch` + `git merge --ff-only origin/main`).
+- Crea el `.env` con un `JWT_SECRET` aleatorio, instala dependencias, prepara la base de datos, carga usuarios y operaciones y compila el front.
+- Deja el servidor arrancando solo con Windows y programa una copia de seguridad diaria (03:00).
+- Instala el **actualizador externo**: la tarea programada «Taller vigilante» (`deploy/windows/vigilante.ps1`) atiende las órdenes de la app desde una carpeta de control y actualiza la aplicación sin que node bloquee sus propios ficheros.
+- Abre el puerto en el cortafuegos **solo para la red local** y crea un acceso directo en el escritorio.
+
+Opciones útiles (valen igual para `.\instalar.cmd`):
+
+```powershell
+.\instalar.ps1 -Simular -SinPreguntas     # ver qué haría, sin cambiar nada
+.\instalar.ps1 -Carpeta 'D:\Taller' -Puerto 3055
+.\instalar.ps1 -Desinstalar               # quita tareas, arranque automático y cortafuegos
+.\instalar.ps1 -Desinstalar -BorrarDatos  # además borra los datos y las copias
+```
+
+Al terminar, abre la app en `http://localhost:3001` (o el puerto elegido) desde este PC y en `http://<IP-del-PC>:3001` desde los demás equipos de la red. Requisitos: PowerShell 5.1 (viene con Windows 10/11) y permisos de administrador.
+
 ## Actualizaciones desde la aplicación
 
 En **Configuración › Actualizaciones** (solo administradores) se ve la versión instalada (commit y fecha) y si hay una nueva en el repositorio de git:
 
 - **Comprobar:** hace `git fetch` y compara con la rama remota. Si hay novedades, aparece un aviso en la cabecera para los administradores y un botón para actualizar.
-- **Actualizar:** solo funciona con `NODE_ENV=production` y `ACTUALIZACIONES=auto`, que ya define `deploy/taller.service` (no los pongas en el `.env`); si no están, la interfaz solo avisa y la actualización se hace a mano con `bash taller-bicicletas/deploy/update.sh`. El proceso es: comprueba que no hay cambios locales ni divergencias, guarda una copia de seguridad, hace un *merge* rápido (`git merge --ff-only`), aplica la base de datos, compila el front y reinicia el servicio (`Restart=always` en `deploy/taller.service`). Si algo falla, revierte al commit anterior.
+- **Actualizar:** según cómo se instaló, la variable `ACTUALIZACIONES` (no la pongas en el `.env`) decide quién aplica la actualización:
+  - **`auto`** (Linux con systemd): la propia app, que ya la define `deploy/taller.service`. El proceso es: comprueba que no hay cambios locales ni divergencias, guarda una copia de seguridad, hace un *merge* rápido (`git merge --ff-only`), aplica la base de datos, compila el front y reinicia el servicio (`Restart=always` en `deploy/taller.service`). Si algo falla, revierte al commit anterior.
+  - **`docker`** (`vigilante.sh` del anfitrión) y **`externo`** (Windows, tarea programada «Taller vigilante»): la app solo deja la orden en la carpeta de control y el vigilante externo aplica el *merge* y reinicia. Se usa cuando la app no puede reemplazar sus propios ficheros (contenedor sin git o node en Windows).
+
+  Si no hay modo externo ni `auto`, la interfaz solo avisa; la actualización se hace a mano (`bash taller-bicicletas/deploy/update.sh` en Linux o volviendo a lanzar `instalar.ps1` en Windows).
 
 El servidor revisa si hay actualizaciones cada X horas (configurable en Ajustes); 0 desactiva el aviso automático.
 

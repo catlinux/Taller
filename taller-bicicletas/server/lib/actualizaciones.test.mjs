@@ -7,6 +7,7 @@ import path from 'node:path'
 import {
   aplicarActualizacion,
   decidirActualizacion,
+  ejecutarPorDefecto,
   interpretarConteo,
   parsearGitLog,
   requierenInstalarDependencias,
@@ -157,5 +158,18 @@ test('aplicarActualizacion revierte si falla la compilación', async () => {
   assert.match(resultado.error, /fallo de compilación/)
   assert.ok(llamadas.includes('git reset --hard sha-inicial'))
   assert.ok(estado.log.some((linea) => linea.includes('Reversión aplicada')))
+})
+
+
+// --- Ejecutor real en Windows ---
+// En Windows, npm.cmd no se puede lanzar con spawn sin shell (EINVAL). Esta
+// prueba comprueba que el ejecutor por defecto funciona con npm.cmd de verdad.
+test('ejecutarPorDefecto ejecuta npm.cmd en Windows', async (t) => {
+  if (process.platform !== 'win32') {
+    t.skip('Solo se ejecuta en Windows.')
+    return
+  }
+  const salida = await ejecutarPorDefecto('npm.cmd', ['--version'], { timeout: 60 * 1000 })
+  assert.match(String(salida).trim(), /^\d+\.\d+\.\d+/)
 })
 

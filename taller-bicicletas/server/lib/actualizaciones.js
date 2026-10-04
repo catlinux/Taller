@@ -14,7 +14,7 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { esModoDocker, leerEstadoDocker } from './actualizacionesDocker.js'
+import { esModoExterno, leerEstadoDocker } from './actualizacionesDocker.js'
 
 // --- Separadores para parsear la salida de `git log` de forma robusta. ---
 // Los mensajes de commit pueden contener saltos de línea, comillas o tabuladores,
@@ -34,6 +34,15 @@ const TIMEOUT_BUILD = 5 * 60 * 1000
 // Comando npm según la plataforma (en Windows hay que usar npm.cmd).
 const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 
+// En Windows, los comandos .cmd/.bat (npm.cmd, npx.cmd…) no se pueden lanzar con
+// spawn sin shell: desde Node 18.20/20.12/22 falla con EINVAL por seguridad.
+// Solo en ese caso usamos shell, y siempre con argumentos fijos del propio código.
+const ES_WINDOWS = process.platform === 'win32'
+const CARACTERES_PELIGROSOS = /[\s&|<>^%"'()!\r\n]/
+function requiereShell(cmd) {
+  return ES_WINDOWS && /\.(cmd|bat)$/i.test(String(cmd))
+}
+
 // Definición de los pasos de la actualización, en orden.
 export const PASOS_ACTUALIZACION = [
   { clave: 'repositorio', etiqueta: 'Comprobando repositorio' },
@@ -50,13 +59,23 @@ export const PASOS_ACTUALIZACION = [
 const ARGS_NPM_CI = ['ci', '--include=dev']
 
 // Ejecutor por defecto: lanza un proceso y captura su salida con un timeout.
-// Usa spawn (sin shell) con argumentos fijos, nunca comandos construidos con
-// entrada del usuario. Devuelve la salida combinada si el proceso sale con 0.
+// Usa spawn con argumentos fijos, nunca comandos construidos con entrada del
+// usuario. En Windows y solo para comandos .cmd/.bat añade shell (necesario para
+// npm.cmd). Devuelve la salida combinada si el proceso sale con 0.
 export function ejecutarPorDefecto(cmd, args, { cwd, timeout = TIMEOUT_GIT, env = process.env } = {}) {
+  const usarShell = requiereShell(cmd)
+  // Con shell, un argumento con espacios o caracteres especiales de cmd rompería
+  // el comando; como son fijos del código, ante la duda lo rechazamos.
+  if (usarShell) {
+    const malo = (args || []).find((arg) => CARACTERES_PELIGROSOS.test(String(arg)))
+    if (malo !== undefined) {
+      return Promise.reject(new Error(`Argumento no permitido para ${cmd}: ${JSON.stringify(malo)}`))
+    }
+  }
   return new Promise((resolve, reject) => {
     let hijo
     try {
-      hijo = spawn(cmd, args, { cwd, env, windowsHide: true })
+      hijo = spawn(cmd, args, { cwd, env, windowsHide: true, shell: usarShell })
     } catch (error) {
       reject(error)
       return
@@ -219,8 +238,8 @@ export const estadoActualizaciones = {
 
 // Ejecuta una comprobación y deja el resultado (o el error) en el estado.
 export async function ejecutarComprobacion({ cwd = process.cwd(), ejecutar = ejecutarPorDefecto } = {}) {
-  // En Docker la comprobación la hace el vigilante del anfitrión; aquí solo se lee.
-  if (esModoDocker()) {
+  // En modo externo (Docker o Windows) la comprobación la hace el vigilante; aquí solo se lee.
+  if (esModoExterno()) {
     Object.assign(estadoActualizaciones, leerEstadoDocker())
     return estadoActualizaciones
   }

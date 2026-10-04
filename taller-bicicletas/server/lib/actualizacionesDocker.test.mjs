@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { interpretarEstado, leerEstadoDocker, solicitar } from './actualizacionesDocker.js'
+import { interpretarEstado, esModoDocker, esModoExterno, leerEstadoDocker, solicitar } from './actualizacionesDocker.js'
 
 // Carpeta de control temporal con los ficheros que escribiría vigilante.sh.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'control-'))
@@ -20,10 +20,28 @@ test('interpretarEstado reconoce ejecutando, ok y error', () => {
   assert.equal(fallo.resultado.error, 'npm ci falló')
 })
 
-test('sin datos del vigilante avisa de que falta el cron', () => {
+test('sin datos del vigilante avisa de que hay que revisarlo', () => {
   const estado = leerEstadoDocker()
   assert.equal(estado.disponible, false)
-  assert.match(estado.ultimoError, /crontab/)
+  assert.match(estado.ultimoError, /vigilante/)
+})
+
+test('esModoExterno cubre Docker y Windows; esModoDocker solo Docker', () => {
+  const previo = process.env.ACTUALIZACIONES
+  process.env.ACTUALIZACIONES = 'docker'
+  assert.equal(esModoExterno(), true)
+  assert.equal(esModoDocker(), true)
+
+  process.env.ACTUALIZACIONES = 'externo'
+  assert.equal(esModoExterno(), true)
+  assert.equal(esModoDocker(), false)
+
+  process.env.ACTUALIZACIONES = 'auto'
+  assert.equal(esModoExterno(), false)
+  assert.equal(esModoDocker(), false)
+
+  if (previo === undefined) delete process.env.ACTUALIZACIONES
+  else process.env.ACTUALIZACIONES = previo
 })
 
 test('lee versión, cambios disponibles y estado de la actualización', () => {

@@ -1,9 +1,15 @@
-// Actualizaciones cuando la aplicación corre dentro de Docker (ACTUALIZACIONES=docker).
+// Actualizaciones en modo «externo»: la aplicación no se actualiza a sí misma, sino
+// que lo hace un vigilante que corre fuera de ella y comparte una carpeta de control.
 //
-// Dentro del contenedor no hay git ni se puede reconstruir la imagen, así que el
-// trabajo lo hace el servidor anfitrión con deploy/docker/vigilante.sh (cron del
-// usuario que gestiona Docker). La comunicación es por una carpeta compartida
-// (CONTROL_DIR, por defecto /control) montada en el contenedor:
+// Se usa en dos instalaciones:
+//   * Docker (ACTUALIZACIONES=docker): dentro del contenedor no hay git ni se puede
+//     reconstruir la imagen, así que el servidor anfitrión lo hace con
+//     deploy/docker/vigilante.sh (cron del usuario que gestiona Docker).
+//   * Windows (ACTUALIZACIONES=externo): node bloquea los ficheros de la propia
+//     aplicación, así que actualiza deploy/windows/vigilante.ps1 (tarea programada).
+//
+// En ambos casos la comunicación es por una carpeta compartida de control
+// (CONTROL_DIR, por defecto /control):
 //
 //   El vigilante escribe:
 //     local.log        `git log -1` de la versión instalada (HEAD del clon)
@@ -26,6 +32,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { decidirActualizacion, interpretarConteo, parsearGitLog } from './actualizaciones.js'
 
+// Docker y Windows usan el mismo protocolo de ficheros; solo cambia quién ejecuta
+// el vigilante. La aplicación trata ambos como modo «externo».
+export const esModoExterno = () =>
+  process.env.ACTUALIZACIONES === 'docker' || process.env.ACTUALIZACIONES === 'externo'
 export const esModoDocker = () => process.env.ACTUALIZACIONES === 'docker'
 export const carpetaControl = () => process.env.CONTROL_DIR || '/control'
 
@@ -77,9 +87,9 @@ export function leerEstadoDocker() {
 
   let ultimoError = error
   if (!hayControl()) {
-    ultimoError = `No se encuentra la carpeta compartida ${carpetaControl()}: revisa el volumen «control» de docker-compose.yml.`
+    ultimoError = `No se encuentra la carpeta de control ${carpetaControl()}: revisa la configuración del vigilante (volumen «control» en Docker o la carpeta control en Windows).`
   } else if (!comprobado && !error) {
-    ultimoError = 'Aún no hay datos del vigilante del servidor. Comprueba que el cron de deploy/docker/vigilante.sh está instalado (crontab -l).'
+    ultimoError = 'Aún no hay datos del vigilante del servidor. Comprueba que está en marcha (el cron de deploy/docker/vigilante.sh en Docker, o la tarea programada «Taller vigilante» en Windows).'
   }
 
   return {
@@ -95,7 +105,7 @@ export function leerEstadoDocker() {
     ultimoError,
     aplicando: ejecutando || fs.existsSync(path.join(carpetaControl(), 'actualizar')),
     pasos: ejecutando || resultado
-      ? [{ clave: 'docker', etiqueta: 'Copia de seguridad, descarga y reconstrucción del contenedor', estado: ejecutando ? 'en curso' : resultado.ok ? 'ok' : 'error' }]
+      ? [{ clave: 'externo', etiqueta: 'Copia de seguridad, descarga y actualización de la aplicación', estado: ejecutando ? 'en curso' : resultado.ok ? 'ok' : 'error' }]
       : [],
     log,
     resultado,
