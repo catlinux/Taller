@@ -181,7 +181,7 @@ export default function Layout() {
           </span>
           <span>
             <span className="block text-sm font-semibold leading-tight text-white">Taller</span>
-            <span className="block text-xs text-slate-500">Taller</span>
+            <span className="block text-xs text-slate-500" title="Versión instalada">v{__APP_VERSION__}</span>
           </span>
         </div>
 
