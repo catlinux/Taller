@@ -10,6 +10,8 @@
 // ordenadas por defecto por último movimiento ascendente (nunca usados primero)
 // y luego por referencia.
 
+import { coincideTexto } from './texto.js'
+
 const DIA_MS = 24 * 60 * 60 * 1000
 
 // Convierte un valor (Date o cadena) en una fecha válida; null si no lo es.
@@ -36,7 +38,7 @@ export function filtrarObsoletos(articulos = [], movimientos = [], opciones = {}
   const sinStockDias = aDias(opciones.sinStockDias)
   const sinMovimientosDias = aDias(opciones.sinMovimientosDias)
   const incluirNuncaUsados = opciones.incluirNuncaUsados !== false
-  const termino = typeof opciones.q === 'string' && opciones.q.trim() ? opciones.q.trim().toLocaleLowerCase() : null
+  const termino = typeof opciones.q === 'string' && opciones.q.trim() ? opciones.q.trim() : null
   const familia = typeof opciones.familia === 'string' && opciones.familia.trim() ? opciones.familia.trim() : null
   const limite = Number.isInteger(opciones.limite) && opciones.limite > 0 ? opciones.limite : null
 
@@ -80,11 +82,9 @@ export function filtrarObsoletos(articulos = [], movimientos = [], opciones = {}
       }
     }
 
-    // Búsqueda por referencia o descripción.
+    // Búsqueda por referencia o descripción (ignora mayúsculas y acentos).
     if (termino !== null) {
-      const coincide = [articulo.referencia, articulo.descripcion]
-        .some((valor) => typeof valor === 'string' && valor.toLocaleLowerCase().includes(termino))
-      if (!coincide) continue
+      if (!coincideTexto([articulo.referencia, articulo.descripcion], termino)) continue
     }
 
     // Filtro por familia (coincidencia exacta).

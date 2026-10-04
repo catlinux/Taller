@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
+import { coincideTexto } from '../lib/texto.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -44,12 +45,14 @@ router.get('/', async (req, res, next) => {
   try {
     const where = {}
     if (req.query.todas !== '1') where.activo = true
-    if (req.query.q !== undefined) {
-      const q = String(req.query.q).trim()
-      where.OR = [{ codigo: { contains: q } }, { descripcion: { contains: q } }]
-    }
     const operaciones = await prisma.operacionManoObra.findMany({ where, orderBy: { id: 'asc' } })
-    return res.json(operaciones)
+
+    // Búsqueda por ?q= en código o descripción, ignorando mayúsculas y acentos
+    // (se resuelve en memoria, porque SQLite no ignora los diacríticos).
+    const q = req.query.q !== undefined ? String(req.query.q).trim() : ''
+    if (q === '') return res.json(operaciones)
+
+    return res.json(operaciones.filter((operacion) => coincideTexto([operacion.codigo, operacion.descripcion], q)))
   } catch (error) { return next(error) }
 })
 

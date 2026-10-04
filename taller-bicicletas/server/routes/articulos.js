@@ -5,6 +5,7 @@ import { precioSinIva } from '../lib/precios.js'
 import { sinStockDesdeNuevo } from '../lib/stock.js'
 import { filtrarObsoletos } from '../lib/obsoletos.js'
 import { agruparConsumo, resolverEstados, AGRUPACIONES, rangoDeFechas, parseFechaISO } from '../lib/consumo.js'
+import { coincideTexto } from '../lib/texto.js'
 
 const router = Router()
 
@@ -250,13 +251,9 @@ router.get('/consumo', async (req, res, next) => {
       where.orden.mecanicoId = mecanicoId
     }
 
+    // La búsqueda por texto se aplica en memoria (más abajo), ignorando
+    // mayúsculas y acentos; SQLite no ignora los diacríticos.
     const q = textoDeQuery(req.query.q)
-    if (q !== null) {
-      where.OR = [
-        { referencia: { contains: q } },
-        { descripcion: { contains: q } },
-      ]
-    }
 
     const filtroArticulo = {}
     const familia = textoDeQuery(req.query.familia)
@@ -291,7 +288,11 @@ router.get('/consumo', async (req, res, next) => {
       precioCompra: linea.articulo?.precioCompra ?? 0,
     }))
 
-    const resultado = agruparConsumo(datos, { desde: desdeTexto, hasta: hastaTexto, agrupar })
+    const datosFiltrados = q === null
+      ? datos
+      : datos.filter((linea) => coincideTexto([linea.referencia, linea.descripcion], q))
+
+    const resultado = agruparConsumo(datosFiltrados, { desde: desdeTexto, hasta: hastaTexto, agrupar })
 
     return res.json({
       desde: desdeTexto,

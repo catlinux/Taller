@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiGet } from '../lib/api.js'
 import { estadoInfo, etiquetaTipoCorta, formatearFecha } from '../lib/ordenes.js'
+import { coincideTexto } from '../lib/texto.js'
 import { IconMas, IconTaller, IconOrdenes, IconAviso, IconReloj, IconCheck } from '../components/Icons.jsx'
 
 // Columnas del tablero, en el orden en que se muestran (las entregadas no ocupan tablero).
@@ -92,12 +93,13 @@ export default function Dashboard() {
   const ordenesFiltradas = useMemo(() => {
     return todasLasOrdenes.filter((o) => {
       const matchEstado = filtroEstado === 'Todos' || o.estado === filtroEstado
-      const term = busqueda.toLowerCase()
-      const matchBusqueda = 
-        o.numeroOrden.toLowerCase().includes(term) ||
-        (o.cliente?.nombre || '').toLowerCase().includes(term) ||
-        (o.cliente?.apellidos || '').toLowerCase().includes(term) ||
-        (o.bicicleta?.modelo || '').toLowerCase().includes(term)
+      const term = busqueda.trim()
+      const matchBusqueda = !term || coincideTexto([
+        o.numeroOrden,
+        o.cliente?.nombre,
+        o.cliente?.apellidos,
+        o.bicicleta?.modelo,
+      ], term)
       return matchEstado && matchBusqueda
     })
   }, [todasLasOrdenes, filtroEstado, busqueda])

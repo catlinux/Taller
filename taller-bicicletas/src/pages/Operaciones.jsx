@@ -5,6 +5,7 @@ import OperacionModal from '../components/OperacionModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api.js'
+import { coincideTexto } from '../lib/texto.js'
 
 export default function Operaciones({ embebido = false }) {
   const { token, user } = useAuth()
@@ -29,9 +30,8 @@ export default function Operaciones({ embebido = false }) {
   function cerrarModal() { setModalAbierto(false); setOperacionEditando(null); setErrorAccion('') }
 
   const filtradas = useMemo(() => {
-    const termino = search.trim().toLocaleLowerCase()
-    return operaciones.filter((operacion) => !termino || [operacion.codigo, operacion.descripcion]
-      .some((valor) => valor?.toLocaleLowerCase().includes(termino)))
+    const termino = search.trim()
+    return operaciones.filter((operacion) => !termino || coincideTexto([operacion.codigo, operacion.descripcion], termino))
   }, [operaciones, search])
 
   function abrirCrear() { setOperacionEditando(null); setErrorAccion(''); setModalAbierto(true) }

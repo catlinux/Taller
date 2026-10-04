@@ -6,6 +6,7 @@ import BicicletaModal from '../components/BicicletaModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api.js'
+import { coincideTexto } from '../lib/texto.js'
 
 export default function Bicicletas() {
   const { token } = useAuth()
@@ -24,8 +25,8 @@ export default function Bicicletas() {
   const eliminar = useMutation((bicicleta) => apiDelete(`/api/bicicletas/${bicicleta.id}`, token), { onSuccess: refrescar, onError: (e) => setErrorAccion(e.message) })
   function cerrarModal() { setModalAbierto(false); setBicicletaEditando(null); setErrorAccion('') }
   const filtrados = useMemo(() => {
-    const termino = search.trim().toLocaleLowerCase()
-    return bicicletas.filter((b) => (!clienteId || String(b.clienteId) === clienteId) && (!termino || [b.marca, b.modelo, b.numeroSerie].some((v) => v?.toLocaleLowerCase().includes(termino))))
+    const termino = search.trim()
+    return bicicletas.filter((b) => (!clienteId || String(b.clienteId) === clienteId) && (!termino || coincideTexto([b.marca, b.modelo, b.numeroSerie], termino)))
   }, [bicicletas, search, clienteId])
   function guardar(datos) { setErrorAccion(''); if (bicicletaEditando) actualizar.mutate({ id: bicicletaEditando.id, datos }); else crear.mutate(datos) }
   function confirmarEliminar(bicicleta) { if (window.confirm(`¿Seguro que quieres eliminar la bicicleta ${bicicleta.marca} ${bicicleta.modelo}?`)) { setErrorAccion(''); eliminar.mutate(bicicleta) } }

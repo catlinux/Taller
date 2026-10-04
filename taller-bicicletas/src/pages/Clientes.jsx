@@ -7,6 +7,7 @@ import DataTable from '../components/DataTable.jsx'
 import { IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api.js'
 import { exportarExcel, fechaFichero } from '../lib/exportarExcel.js'
+import { coincideTexto } from '../lib/texto.js'
 
 export default function Clientes() {
   const { token } = useAuth()
@@ -31,9 +32,9 @@ export default function Clientes() {
   function cerrarModal() { setModalAbierto(false); setClienteEditando(null); setErrorAccion('') }
 
   const filtrados = useMemo(() => {
-    const termino = search.trim().toLocaleLowerCase()
-    return clientes.filter((cliente) => [cliente.nombre, cliente.apellidos, cliente.email, cliente.telefono]
-      .some((valor) => valor?.toLocaleLowerCase().includes(termino)))
+    const termino = search.trim()
+    if (!termino) return clientes
+    return clientes.filter((cliente) => coincideTexto([cliente.nombre, cliente.apellidos, cliente.email, cliente.telefono], termino))
   }, [clientes, search])
 
   function abrirCrear() { setClienteEditando(null); setErrorAccion(''); setModalAbierto(true) }

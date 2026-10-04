@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api.js'
 import { aNumero, formatearEuros } from '../../lib/ordenes.js'
+import { coincideTexto } from '../../lib/texto.js'
 import { useAjustes } from '../../context/AjustesContext.jsx'
 
 const inputClass = 'mt-1.5 w-full rounded-lg border border-antracita-600 bg-antracita-900 px-3 py-2.5 text-white outline-none focus:border-azul-400'
@@ -88,10 +89,10 @@ export default function TablaMateriales({ orden, token }) {
   )
 
   const resultados = useMemo(() => {
-    const q = busqueda.toLowerCase()
+    const q = busqueda.trim()
     if (!q) return []
     return articulos
-      .filter((articulo) => articulo.referencia.toLowerCase().includes(q) || articulo.descripcion.toLowerCase().includes(q))
+      .filter((articulo) => coincideTexto([articulo.referencia, articulo.descripcion], q))
       .slice(0, 10)
   }, [articulos, busqueda])
 

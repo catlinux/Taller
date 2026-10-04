@@ -8,6 +8,7 @@ import DataTable from '../components/DataTable.jsx'
 import { IconAjustarStock, IconBuscar, IconEditar, IconMas, IconPapelera } from '../components/Icons.jsx'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../lib/api.js'
 import { exportarExcel, fechaFichero } from '../lib/exportarExcel.js'
+import { coincideTexto } from '../lib/texto.js'
 
 // Modal para ajustar el stock de un artículo: entrada, salida o valor absoluto.
 function AjusteStockModal({ articulo, onSubmit, onClose, isSaving }) {
@@ -96,8 +97,8 @@ export default function Articulos() {
 
   // Artículos que coinciden con la búsqueda (antes de aplicar la casilla).
   const filtradosBusqueda = useMemo(() => {
-    const termino = search.trim().toLocaleLowerCase()
-    return articulos.filter((a) => !termino || [a.referencia, a.descripcion, a.familia, a.proveedor].some((v) => v?.toLocaleLowerCase().includes(termino)))
+    const termino = search.trim()
+    return articulos.filter((a) => !termino || coincideTexto([a.referencia, a.descripcion, a.familia, a.proveedor], termino))
   }, [articulos, search])
 
   // Un artículo se oculta si está sin stock y su fecha es anterior al límite.

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware } from './auth.js'
+import { coincideTexto } from '../lib/texto.js'
 
 const router = Router()
 
@@ -66,35 +67,29 @@ function construirDatosCliente(body, { parcial = false } = {}) {
 
 // GET / -> lista de clientes con el número de bicicletas asociadas.
 // Admite búsqueda por ?q=: número de cliente (exacto si es un entero), DNI,
-// teléfono, nombre, apellidos o email (contiene).
+// teléfono, nombre, apellidos o email. La comparación ignora mayúsculas y
+// acentos y exige que aparezcan todas las palabras (se resuelve en memoria,
+// porque SQLite no ignora los diacríticos).
 router.get('/', async (req, res, next) => {
   try {
-    const where = {}
-    if (req.query.q !== undefined) {
-      const q = String(req.query.q).trim()
-      if (q !== '') {
-        const condiciones = [
-          { nombre: { contains: q } },
-          { apellidos: { contains: q } },
-          { dni: { contains: q } },
-          { telefono: { contains: q } },
-          { email: { contains: q } },
-        ]
-        // Si el texto es un entero, busca también por número de cliente exacto
-        const numeroCliente = Number(q)
-        if (Number.isInteger(numeroCliente)) {
-          condiciones.push({ numeroCliente })
-        }
-        where.OR = condiciones
-      }
-    }
+    const q = req.query.q !== undefined ? String(req.query.q).trim() : ''
 
     const clientes = await prisma.cliente.findMany({
-      where,
       orderBy: { nombre: 'asc' },
       include: { _count: { select: { bicicletas: true } } },
     })
-    return res.json(clientes)
+
+    if (q === '') return res.json(clientes)
+
+    // Si el texto es un entero, se busca también por número de cliente exacto.
+    const numeroCliente = Number(q)
+    const esNumero = Number.isInteger(numeroCliente)
+
+    const filtrados = clientes.filter((cliente) =>
+      coincideTexto([cliente.nombre, cliente.apellidos, cliente.dni, cliente.telefono, cliente.email], q)
+      || (esNumero && cliente.numeroCliente === numeroCliente))
+
+    return res.json(filtrados)
   } catch (error) {
     return next(error)
   }

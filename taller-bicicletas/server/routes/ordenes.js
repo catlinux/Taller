@@ -3,6 +3,7 @@ import prisma from '../db.js'
 import { authMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
 import { FORMAS_PAGO } from '../lib/pagos.js'
+import { coincideTexto } from '../lib/texto.js'
 
 const router = Router()
 
@@ -443,27 +444,28 @@ router.get('/', async (req, res, next) => {
       }
       where.formaPago = req.query.formaPago
     }
-    if (req.query.q !== undefined) {
-      const q = String(req.query.q).trim()
-      if (q !== '') {
-        where.OR = [
-          { numeroOrden: { contains: q } },
-          { cliente: { is: { OR: [{ nombre: { contains: q } }, { apellidos: { contains: q } }] } } },
-          { bicicleta: { is: { OR: [
-            { marca: { contains: q } },
-            { modelo: { contains: q } },
-            { numeroSerie: { contains: q } },
-          ] } } },
-        ]
-      }
-    }
+    const q = req.query.q !== undefined ? String(req.query.q).trim() : ''
 
     const ordenes = await prisma.ordenReparacion.findMany({
       where,
       orderBy: { id: 'desc' },
       include: INCLUDE_ORDEN,
     })
-    return res.json(ordenes)
+
+    // Búsqueda por ?q= en nº de orden, cliente o bicicleta, ignorando mayúsculas
+    // y acentos (se resuelve en memoria, porque SQLite no ignora los diacríticos).
+    if (q === '') return res.json(ordenes)
+
+    const filtradas = ordenes.filter((orden) => coincideTexto([
+      orden.numeroOrden,
+      orden.cliente?.nombre,
+      orden.cliente?.apellidos,
+      orden.bicicleta?.marca,
+      orden.bicicleta?.modelo,
+      orden.bicicleta?.numeroSerie,
+    ], q))
+
+    return res.json(filtradas)
   } catch (error) {
     return next(error)
   }
