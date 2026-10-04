@@ -22,6 +22,30 @@ npm run dev                 # front http://localhost:5173, API :3001
 
 La demo incluye los mecánicos **Zipi** y **Zape** y la empresa ficticia *Rompecadenas Bike Workshop, S.L.*
 
+## Cómo instalar (tres métodos)
+
+Todas las formas parten del mismo repositorio (`https://github.com/catlinux/Taller.git`) y dejan los mismos usuarios iniciales. Elige la que encaje con tu máquina:
+
+| Método | Máquina | Qué hace | Instalador |
+| --- | --- | --- | --- |
+| **Windows** | PC Windows 10/11 | Servidor nativo (Node): arranca solo con Windows, copia diaria y cortafuegos para la red local. | `instalar.cmd` / `instalar.ps1` (raíz) |
+| **Docker** | Linux, macOS o Windows con Docker Desktop | Contenedor con todo dentro (no instala Node en el anfitrión); datos en un volumen y actualizaciones. | `bash instalar.sh --metodo docker` o `instalar.ps1` opción 2 |
+| **Linux (systemd)** | Servidor Linux | Node en el sistema y servicio `systemd` (arranca solo); pensado para Apache como proxy inverso. | `bash instalar.sh --metodo linux` |
+
+Menú unificado en Linux y macOS (`instalar.sh`, que también funciona suelto):
+
+```bash
+bash instalar.sh                         # menú: 1) Docker  2) Linux (systemd)  3) Windows
+bash instalar.sh --metodo docker         # Docker sin menú
+bash instalar.sh --metodo linux          # servicio systemd sin menú
+bash instalar.sh --simular               # muestra lo que haría, sin cambiar nada
+bash instalar.sh --puerto 8080 --carpeta ~/taller
+bash instalar.sh --solo-local            # accesible solo desde este equipo
+bash instalar.sh --sin-preguntas         # usa los valores por defecto
+```
+
+`instalar.sh` acepta: `--metodo docker|linux`, `--carpeta RUTA`, `--puerto N`, `--red` / `--solo-local`, `--sin-preguntas`, `--simular` y `--repositorio URL`. Si se ejecuta **suelto** (descargado sin el repositorio), instala `git` si falta (apt/dnf/yum/zypper/pacman/brew; si no puede, lo explica), clona el repositorio en la carpeta de instalación y continúa.
+
 ## Producción con Apache (subdominio)
 
 Node sirve la API y el front compilado en el puerto 3001 (solo local); Apache hace de proxy inverso con HTTPS.
@@ -53,9 +77,11 @@ powershell -ExecutionPolicy Bypass -File .\instalar.ps1
 
 El menú deja elegir el método:
 
-1. **Windows** — monta el servidor en este PC para la red local (recomendado).
-2. **Docker** — para Windows, Linux o Mac con Docker.
-3. **Linux (servicio systemd)** — se instala desde la propia máquina destino con `bash taller-bicicletas/deploy/instalar.sh`.
+1. **Windows** — monta el servidor nativo en este PC para la red local (recomendado).
+2. **Docker** — usa Docker Desktop: arranca el contenedor y deja un `actualizar.cmd`.
+3. **Linux (servicio systemd)** — se instala desde la propia máquina Linux (aquí solo se explica cómo).
+
+La opción 2 usa `taller-bicicletas/deploy/docker/instalar-docker.ps1` (requiere Docker Desktop): copia las plantillas de `deploy/docker/`, crea el `.env`, arranca el contenedor con `docker compose up -d --build`, abre el puerto en el cortafuegos y deja `actualizar.cmd` para subir a la última versión sin perder datos.
 
 La opción 1 (`taller-bicicletas/deploy/windows/instalar-windows.ps1`) se encarga de todo:
 
@@ -128,7 +154,7 @@ Hace una copia de la base de datos (`data/backups/backup-pre-update-*.db`, visib
 
 ## Instalación con Docker (la del servidor de demo)
 
-`taller-bicicletas/deploy/docker/` tiene todo lo necesario: `Dockerfile`, `docker-compose.yml`, `entrypoint.sh`, `update.sh` y `vigilante.sh`. Estructura en el servidor:
+`taller-bicicletas/deploy/docker/` tiene todo lo necesario: `Dockerfile`, `docker-compose.yml`, `entrypoint.sh`, `update.sh` y `vigilante.sh`. El instalador automático es `bash taller-bicicletas/deploy/docker/instalar-docker.sh` (lo llama `instalar.sh --metodo docker`); en Windows con Docker Desktop, `instalar-docker.ps1`. Estructura en el servidor:
 
 ```
 ~/taller-deploy/

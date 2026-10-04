@@ -5,9 +5,11 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      ACTUALIZACIONES: docker      # actualizaciones vía vigilante.sh (carpeta control/)
+      # Lo pone el .env: «docker» si el vigilante del anfitrión atiende las órdenes de la app
+      # (instalador de Linux/Mac) o vacío en Windows (allí se actualiza con actualizar.cmd).
+      ACTUALIZACIONES: "${ACTUALIZACIONES:-}"
       CONTROL_DIR: /control
-    ports: ["127.0.0.1:8083:3001"]
+    ports: ["${BIND:-127.0.0.1}:${PUERTO:-3001}:3001"]
     volumes:
       - taller-data:/data
       - ./control:/control         # carpeta compartida con vigilante.sh

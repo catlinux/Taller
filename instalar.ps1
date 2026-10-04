@@ -26,6 +26,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# ¿El usuario indicó -Carpeta de forma explícita? Sirve para no pisar la carpeta por
+# defecto del instalador de Docker cuando no se ha especificado ninguna.
+$carpetaFijada = $PSBoundParameters.ContainsKey('Carpeta')
+
 function EscribirLinea {
   param([string]$Texto = '', [string]$Color = 'Gray')
   Write-Host $Texto -ForegroundColor $Color
@@ -49,6 +53,17 @@ function Argumentos-Reenvio {
   return $lista
 }
 
+# Argumentos para el instalador de Docker (no usa copias ni desinstalación).
+# -Carpeta solo se reenvía si el usuario lo indicó: así el instalador de Docker aplica
+# su propia carpeta por defecto (%USERPROFILE%\taller) cuando no se especifica ninguna.
+function Argumentos-ReenvioDocker {
+  $lista = @('-Puerto', $Puerto, '-Repositorio', $Repositorio)
+  if ($carpetaFijada) { $lista = @('-Carpeta', $Carpeta) + $lista }
+  if ($SinPreguntas) { $lista += '-SinPreguntas' }
+  if ($Simular) { $lista += '-Simular' }
+  return $lista
+}
+
 function Mostrar-Menu {
   Titulo 'Instalador de Taller'
   EscribirLinea 'Elige cómo quieres montar el servidor del taller:' DarkGray
@@ -63,10 +78,11 @@ function Mostrar-Menu {
 function Mensaje-NoDisponible {
   param([string]$Metodo)
   Titulo $Metodo
-  EscribirLinea "La instalación con «$Metodo» todavía no está disponible desde este menú." Yellow
-  EscribirLinea 'Se instala desde la propia máquina destino: copia el repositorio allí y ejecuta' DarkGray
-  EscribirLinea '    bash taller-bicicletas/deploy/instalar.sh' DarkGray
-  EscribirLinea 'en Linux o Mac (para Docker, usa docker compose en la carpeta deploy/docker).' DarkGray
+  EscribirLinea "La instalación con «$Metodo» se hace desde la propia máquina Linux, no desde este menú de Windows." Yellow
+  EscribirLinea 'En esa máquina, con el repositorio a mano, ejecuta:' DarkGray
+  EscribirLinea '    bash instalar.sh              (elige la opción 2: Linux con systemd)' DarkGray
+  EscribirLinea 'o directamente:' DarkGray
+  EscribirLinea '    bash taller-bicicletas/deploy/linux/instalar-linux.sh' DarkGray
 }
 
 # Ejecuta el instalador de Windows en un proceso nuevo (así gestiona su elevación y su código de salida).
@@ -142,7 +158,7 @@ switch ($opcion) {
   '2' {
     $docker = Join-Path $PSScriptRoot 'taller-bicicletas\deploy\docker\instalar-docker.ps1'
     if (Test-Path -LiteralPath $docker) {
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $docker @(Argumentos-Reenvio)
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $docker @(Argumentos-ReenvioDocker)
       exit $LASTEXITCODE
     } else {
       Mensaje-NoDisponible 'Docker'
