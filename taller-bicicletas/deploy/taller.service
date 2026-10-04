@@ -9,6 +9,10 @@ Type=simple
 User=taller
 WorkingDirectory=/opt/taller/taller-bicicletas
 EnvironmentFile=/opt/taller/taller-bicicletas/.env
+Environment=NODE_ENV=production
+# "auto" permite actualizar desde Configuración > Actualizaciones (el servicio se
+# reinicia solo, ver Restart=always). Quita esta línea para que la app solo avise.
+Environment=ACTUALIZACIONES=auto
 ExecStart=/usr/bin/node server/index.js
 # Restart=always permite que la actualización desde la interfaz reinicie el
 # servicio sola: el proceso termina con código 0 y systemd lo levanta de nuevo.

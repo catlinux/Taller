@@ -36,7 +36,7 @@ bash deploy/install.sh --demo      # sin --demo para una base vacía
 2. Servicio: copia `deploy/taller.service` a `/etc/systemd/system/`, ajusta usuario y ruta, y `systemctl enable --now taller`.
 3. Apache: copia `deploy/taller.conf` a `sites-available`, cambia `taller.midominio.com`, `a2enmod proxy proxy_http headers rewrite ssl`, `a2ensite taller`, `certbot --apache -d <subdominio>` y recarga Apache.
 
-Requisitos: Node 20+, Apache 2.4. Actualizar: `git pull && bash deploy/install.sh && systemctl restart taller`.
+Requisitos: Node 20+, Apache 2.4. Actualizar: `bash taller-bicicletas/deploy/update.sh` (ver más abajo).
 
 La base de datos es `taller-bicicletas/prisma/dev.db` y las copias de seguridad se guardan en `data/backups`; ninguna se versiona.
 
@@ -45,7 +45,7 @@ La base de datos es `taller-bicicletas/prisma/dev.db` y las copias de seguridad 
 En **Configuración › Actualizaciones** (solo administradores) se ve la versión instalada (commit y fecha) y si hay una nueva en el repositorio de git:
 
 - **Comprobar:** hace `git fetch` y compara con la rama remota. Si hay novedades, aparece un aviso en la cabecera para los administradores y un botón para actualizar.
-- **Actualizar:** solo funciona con `NODE_ENV=production` y `ACTUALIZACIONES=auto` en el `.env`; si no, la interfaz solo avisa y la actualización se hace a mano (`git pull && bash deploy/install.sh && systemctl restart taller`). El proceso es: comprueba que no hay cambios locales ni divergencias, guarda una copia de seguridad, hace un *merge* rápido (`git merge --ff-only`), aplica la base de datos, compila el front y reinicia el servicio (`Restart=always` en `deploy/taller.service`). Si algo falla, revierte al commit anterior.
+- **Actualizar:** solo funciona con `NODE_ENV=production` y `ACTUALIZACIONES=auto`, que ya define `deploy/taller.service` (no los pongas en el `.env`); si no están, la interfaz solo avisa y la actualización se hace a mano con `bash taller-bicicletas/deploy/update.sh`. El proceso es: comprueba que no hay cambios locales ni divergencias, guarda una copia de seguridad, hace un *merge* rápido (`git merge --ff-only`), aplica la base de datos, compila el front y reinicia el servicio (`Restart=always` en `deploy/taller.service`). Si algo falla, revierte al commit anterior.
 
 El servidor revisa si hay actualizaciones cada X horas (configurable en Ajustes); 0 desactiva el aviso automático.
 
@@ -75,3 +75,12 @@ En **Artículos** hay tres pestañas:
 - **Consumo:** materiales consumidos en cualquier periodo (por fecha de entrada de la orden), con atajos (esta semana, mes pasado…), desglose por día/semana/mes/año y filtros por texto, familia, proveedor, mecánico y estado de la orden (los presupuestos no cuentan por defecto). Exporta a Excel y CSV.
 
 La «Forma de pago» de las órdenes es un único campo: Pendiente, Parcial, Efectivo, Tarjeta, Bizum o Transferencia, y se ve en la columna «Pago» del listado.
+
+## Actualizar el servidor a mano
+
+```bash
+bash taller-bicicletas/deploy/update.sh           # avanza a la última versión (sin pérdida de datos)
+bash taller-bicicletas/deploy/update.sh --force   # solo si el historial de git cambió o hay cambios locales sin valor
+```
+
+Hace una copia de la base de datos (`data/backups/backup-pre-update-*.db`, visible en Configuración › Copias de seguridad), `git`, `npm ci`, `prisma db push`, compila y reinicia el servicio `taller`. Es lo que hay que usar la primera vez, hasta que el servidor tenga la versión que incluye el botón de actualizar de la aplicación.
