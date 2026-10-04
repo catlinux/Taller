@@ -141,6 +141,8 @@ function Detener-Servidor {
     Simula 'Pararía el servidor y el vigilante (tareas «Taller» y «Taller vigilante», lanzador y node) antes de tocar sus ficheros, y esperaría a que se libere el puerto.'
     return
   }
+  # En una instalación nueva la carpeta aún no existe.
+  New-Item -ItemType Directory -Force -Path $script:Carpeta | Out-Null
   [System.IO.File]::WriteAllText($script:RutaDetener, (Get-Date).ToString('s'), (New-Object System.Text.ASCIIEncoding))
   foreach ($nombre in @($script:NombreTarea, $script:NombreTareaVigilante)) {
     $t = Get-ScheduledTask -TaskName $nombre -ErrorAction SilentlyContinue
