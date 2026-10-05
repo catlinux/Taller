@@ -9,6 +9,7 @@ import DatosPanel from '../components/config/DatosPanel.jsx'
 import FactusolPanel from '../components/config/FactusolPanel.jsx'
 import SeguridadPanel from '../components/config/SeguridadPanel.jsx'
 import ActualizacionesPanel from '../components/config/ActualizacionesPanel.jsx'
+import ImportarPanel from '../components/config/ImportarPanel.jsx'
 import Empresa from './Empresa.jsx'
 import Operaciones from './Operaciones.jsx'
 import Usuarios from './Usuarios.jsx'
@@ -26,6 +27,7 @@ import {
   IconActualizar,
   IconPapelera,
   IconDescargar,
+  IconFlechaArriba,
 } from '../components/Icons.jsx'
 
 // Definición de las pestañas de Configuración. `soloAdmin` restringe su
@@ -46,6 +48,7 @@ const PESTANAS = [
   { id: 'taller', etiqueta: 'Taller', Icono: IconTaller, soloAdmin: true, contenido: <TallerPanel /> },
   { id: 'factusol', etiqueta: 'Factusol', Icono: IconDescargar, soloAdmin: true, contenido: <FactusolPanel /> },
   { id: 'datos', etiqueta: 'Datos', Icono: IconTabla, soloAdmin: true, contenido: <DatosPanel /> },
+  { id: 'importar', etiqueta: 'Importar', Icono: IconFlechaArriba, soloAdmin: true, contenido: <ImportarPanel /> },
   { id: 'sesion', etiqueta: 'Sesión y seguridad', Icono: IconSeguridad, soloAdmin: true, contenido: <SeguridadPanel /> },
   {
     id: 'actualizaciones', etiqueta: 'Actualizaciones', Icono: IconActualizar, soloAdmin: true, contenido: <ActualizacionesPanel />,
