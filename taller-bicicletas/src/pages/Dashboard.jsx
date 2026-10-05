@@ -11,10 +11,10 @@ const ESTADOS_TABLERO = ['Admision', 'EnReparacion', 'EnPausa', 'EsperandoMateri
 
 // Punto de color de la cabecera de cada columna.
 const PUNTO_ESTADO = {
-  Admision: 'bg-slate-400',
-  EnReparacion: 'bg-azul-500',
-  EnPausa: 'bg-azul-400',
-  EsperandoMaterial: 'bg-naranja-400',
+  Admision: 'bg-yellow-400',
+  EnReparacion: 'bg-naranja-500',
+  EnPausa: 'bg-red-500',
+  EsperandoMaterial: 'bg-pink-400',
   Biomecanica: 'bg-violet-400',
   Finalizada: 'bg-ok',
 }
@@ -204,9 +204,11 @@ export default function Dashboard() {
                           <td className="px-4 py-3">
                             <span className={`badge px-2 py-0.5 text-[10px] font-medium ${ 
                               orden.estado === 'Finalizada' ? 'bg-ok/10 text-ok' : 
-                              orden.estado === 'EsperandoMaterial' ? 'bg-naranja-500/10 text-naranja-400' : 
+                              orden.estado === 'EsperandoMaterial' ? 'bg-pink-500/10 text-pink-400' : 
                               orden.estado === 'Biomecanica' ? 'bg-violet-500/10 text-violet-400' : 
-                              orden.estado === 'Admision' ? 'bg-slate-500/10 text-slate-400' : 'bg-azul-500/10 text-azul-400'
+                              orden.estado === 'Admision' ? 'bg-yellow-500/10 text-yellow-400' : 
+                              orden.estado === 'EnPausa' ? 'bg-red-500/10 text-red-400' : 
+                              orden.estado === 'EnReparacion' ? 'bg-naranja-500/10 text-naranja-400' : 'bg-azul-500/10 text-azul-400'
                             }`}>
                               {estadoInfo(orden.estado).etiqueta}
                             </span>
