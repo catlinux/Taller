@@ -130,32 +130,32 @@ export default function Articulos() {
   )
 
   const columnas = [
-    { clave: 'referencia', titulo: 'Referencia', title: 'Referencia: código interno del artículo', ancho: '170px', valor: (a) => a.referencia, clase: 'font-medium text-white' },
-    { clave: 'descripcion', titulo: 'Descripción', title: 'Descripción del artículo', ancho: '420px', valor: (a) => a.descripcion, clase: 'text-slate-400' },
-    { clave: 'familia', titulo: 'Familia', title: 'Familia o categoría del artículo', ancho: '200px', valor: (a) => a.familia, clase: 'text-slate-400' },
+    { clave: 'referencia', titulo: 'Referencia', title: 'Referencia: código interno del artículo', ancho: '140px', valor: (a) => a.referencia, clase: 'font-medium text-white' },
+    { clave: 'descripcion', titulo: 'Descripción', title: 'Descripción del artículo', ancho: '300px', valor: (a) => a.descripcion, clase: 'text-slate-400' },
+    { clave: 'familia', titulo: 'Familia', title: 'Familia o categoría del artículo', ancho: '130px', valor: (a) => a.familia, clase: 'text-slate-400' },
     { clave: 'proveedor', titulo: 'Proveedor', title: 'Proveedor habitual del artículo', ancho: '130px', valor: (a) => a.proveedor, clase: 'text-slate-400' },
     {
-      clave: 'precioCompra', titulo: 'Compra', title: 'Precio de compra (sin IVA)', ancho: '130px', tipo: 'numero', alinear: 'der',
+      clave: 'precioCompra', titulo: 'Compra', title: 'Precio de compra (sin IVA)', ancho: '110px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.precioCompra,
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioCompra).toFixed(2)} €</span>,
     },
     {
-      clave: 'precioVentaSinIva', titulo: 'Venta s/IVA', title: 'Precio de venta sin IVA (base imponible)', ancho: '130px', tipo: 'numero', alinear: 'der',
+      clave: 'precioVentaSinIva', titulo: 'Venta s/IVA', title: 'Precio de venta sin IVA (base imponible)', ancho: '125px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.precioVentaSinIva,
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioVentaSinIva).toFixed(2)} €</span>,
     },
     {
-      clave: 'precioVenta', titulo: 'Venta c/IVA', title: 'Precio de venta (con IVA incluido)', ancho: '130px', tipo: 'numero', alinear: 'der',
+      clave: 'precioVenta', titulo: 'Venta c/IVA', title: 'Precio de venta (con IVA incluido)', ancho: '125px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.precioVenta,
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioVenta).toFixed(2)} €</span>,
     },
     {
-      clave: 'iva', titulo: 'IVA', title: 'Tipo de IVA aplicado (%)', ancho: '80px', tipo: 'numero', alinear: 'der',
+      clave: 'iva', titulo: 'IVA', title: 'Tipo de IVA aplicado (%)', ancho: '70px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.iva,
       render: (a) => <span className="block truncate text-slate-400">{a.iva} %</span>,
     },
     {
-      clave: 'stock', titulo: 'Stock', title: 'Unidades disponibles en almacén', ancho: '100px', tipo: 'numero', alinear: 'der',
+      clave: 'stock', titulo: 'Stock', title: 'Unidades disponibles en almacén', ancho: '90px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.stock,
       render: (a) => <span className={`block truncate ${a.stock <= 5 ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{a.stock}</span>,
     },
@@ -258,6 +258,7 @@ export default function Articulos() {
         claveReinicio={search}
         primeraColumnaFija
         anchoAcciones={150}
+        accionesFijas
         scrollInterno
         vacio={search ? 'No hay artículos que coincidan con la búsqueda.' : 'Todavía no hay artículos registrados.'}
       />

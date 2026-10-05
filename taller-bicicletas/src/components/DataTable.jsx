@@ -150,6 +150,9 @@ export default function DataTable({
   primeraColumnaFija = false,
   // Ancho de la columna de acciones en píxeles.
   anchoAcciones = ANCHO_ACCIONES,
+  // Fija la columna de acciones al borde derecho al hacer scroll horizontal, para que
+  // «Acciones» y sus botones se vean siempre enteros en tablas anchas.
+  accionesFijas = false,
   // Confina la tabla en un contenedor con scroll vertical y cabecera fija.
   scrollInterno = false,
   // Selección opcional de filas. Objeto con { todas, algunas, estaSeleccionada(fila),
@@ -279,7 +282,14 @@ export default function DataTable({
                   </th>
                 )
               })}
-              {tieneAcciones && <th scope="col" className={`th text-right ${scrollInterno ? 'sticky top-0 z-20 border-b border-antracita-700 bg-antracita-900' : ''}`}>Acciones</th>}
+              {tieneAcciones && (
+                <th
+                  scope="col"
+                  className={`th whitespace-nowrap text-right ${scrollInterno ? 'sticky top-0 z-20 border-b border-antracita-700 bg-antracita-900' : ''} ${accionesFijas ? `sticky right-0 ${scrollInterno ? 'z-30' : 'z-10'} border-l border-antracita-700 bg-antracita-900` : ''}`}
+                >
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-antracita-700/80">
@@ -340,7 +350,7 @@ export default function DataTable({
                     )
                   })}
                   {tieneAcciones && (
-                    <td className="td align-middle">
+                    <td className={`td align-middle ${accionesFijas ? 'sticky right-0 z-10 border-l border-antracita-700 bg-antracita-800 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.55)]' : ''}`}>
                       <div className="flex items-center justify-end gap-1">{acciones(fila)}</div>
                     </td>
                   )}
