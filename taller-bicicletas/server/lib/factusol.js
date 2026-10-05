@@ -318,6 +318,14 @@ export function numeroAlbaran(numeroOrden) {
   return `${String(anio).slice(-2)}${String(numero).padStart(4, '0')}`
 }
 
+// Referencia del albarán (máx. 12): «ORD-2026-0012» tiene 13 caracteres y
+// cortarlo perdería el número, así que se abrevia el año: «ORD26-0012».
+export function referenciaCorta(numeroOrden) {
+  const coincidencia = /^ORD-\d{2}(\d{2})-(\d{4})$/.exec(String(numeroOrden ?? ''))
+  if (coincidencia) return `ORD${coincidencia[1]}-${coincidencia[2]}`
+  return limpiarTexto(numeroOrden, 12)
+}
+
 // Fecha del albarán: la de finalización y, si no hay, la de última modificación.
 function fechaAlbaran(orden) {
   return orden.fechaFinalizacion || orden.updatedAt || new Date()
@@ -347,7 +355,7 @@ function construirFilaAlb(orden, config, calculo, albaran, ahora) {
 
   fila[ALB.A] = config.serie
   fila[ALB.B] = albaran
-  fila[ALB.C] = limpiarTexto(orden.numeroOrden, 12) // referencia: máx. 12 en Factusol
+  fila[ALB.C] = referenciaCorta(orden.numeroOrden) // referencia: máx. 12 en Factusol
   fila[ALB.D] = fechaExcel(fechaAlbaran(orden))
   fila[ALB.E] = 0
   fila[ALB.F] = limpiarTexto(config.almacen, 3)

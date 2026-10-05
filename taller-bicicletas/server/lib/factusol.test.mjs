@@ -166,9 +166,7 @@ test('prepararExportacion genera una fila de ALB con las columnas clave', () => 
   assert.equal(fila.length, 112)
   assert.equal(fila[0], 1) // A tipo de documento (serie)
   assert.equal(fila[1], '260012') // B número de documento
-  // C referencia: el número de orden recortado al máximo del campo (12), ya
-  // que «ORD-AAAA-NNNN» ocupa 13 caracteres.
-  assert.equal(fila[2], 'ORD-2026-001')
+  assert.equal(fila[2], 'ORD26-0012') // referencia abreviada: cabe en 12 sin perder el número
   assert.equal(fila[3], 46300) // D fecha (5/10/2026)
   assert.equal(fila[4], 0) // E estado
   assert.equal(fila[5], 'GEN') // F almacén

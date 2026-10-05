@@ -18,6 +18,7 @@ import ajustesRoutes, { obtenerAjustes } from './routes/ajustes.js'
 import modoRoutes from './routes/modo.js'
 import actualizacionesRoutes from './routes/actualizaciones.js'
 import papeleraRoutes from './routes/papelera.js'
+import factusolRoutes from './routes/factusol.js'
 import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
@@ -71,6 +72,7 @@ app.use('/api/backups', backupsRoutes)
 app.use('/api/modo', modoRoutes)
 app.use('/api/actualizaciones', actualizacionesRoutes)
 app.use('/api/papelera', papeleraRoutes)
+app.use('/api/factusol', factusolRoutes)
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {
