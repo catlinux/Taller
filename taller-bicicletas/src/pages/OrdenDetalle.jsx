@@ -50,7 +50,7 @@ function estadoInicialForm() {
     numeroOrden: '',
     fechaEntrada: aDatetimeLocal(null),
     fechaPrevista: '',
-    estado: 'Presupuesto',
+    estado: 'Admision',
     tipoReparacion: '',
     garantia: false,
     mecanicoId: '',
@@ -150,7 +150,7 @@ export default function OrdenDetalle() {
       numeroOrden: orden.numeroOrden ?? '',
       fechaEntrada: aDatetimeLocal(orden.fechaEntrada),
       fechaPrevista: aFechaInput(orden.fechaPrevista),
-      estado: orden.estado ?? 'Presupuesto',
+      estado: orden.estado ?? 'Admision',
       tipoReparacion: orden.tipoReparacion ?? '',
       garantia: Boolean(orden.garantia),
       mecanicoId: orden.mecanicoId ?? '',
@@ -323,7 +323,7 @@ export default function OrdenDetalle() {
       setErrorAccion('Guarda los cambios antes de duplicar la orden.')
       return
     }
-    if (!window.confirm('¿Duplicar esta orden? Se creará una copia nueva en estado Presupuesto.')) return
+    if (!window.confirm('¿Duplicar esta orden? Se creará una copia nueva en estado Admisión.')) return
     duplicar.mutate()
   }
 

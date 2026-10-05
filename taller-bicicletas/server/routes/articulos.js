@@ -233,7 +233,7 @@ router.get('/consumo', async (req, res, next) => {
       return res.status(400).json({ error: `agrupar debe ser uno de: ${AGRUPACIONES.join(', ')}` })
     }
 
-    // Por defecto se excluye Presupuesto (un presupuesto no es consumo real).
+    // Por defecto se incluyen todos los estados.
     const estados = resolverEstados(req.query.estados)
 
     const rango = rangoDeFechas(desdeTexto, hastaTexto)

@@ -1,6 +1,7 @@
 import { Router } from 'express'
-import { cambiarModo, demoExiste, modoActual } from '../db.js'
+import prisma, { cambiarModo, demoExiste, modoActual } from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
+import { migrarEstados } from '../lib/estados.js'
 
 const router = Router()
 
@@ -22,6 +23,10 @@ router.put('/', authMiddleware, roleMiddleware('admin'), async (req, res, next) 
       return res.status(400).json({ error: "El modo debe ser 'real' o 'demo'" })
     }
     await cambiarModo(modo)
+    // La base recién seleccionada puede traer estados antiguos: se migran.
+    await migrarEstados(prisma).catch((error) => {
+      console.error('Error al migrar los estados de las órdenes:', error)
+    })
     return res.json({ modo: modoActual(), demoExiste: demoExiste() })
   } catch (error) {
     return next(error)

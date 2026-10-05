@@ -5,10 +5,10 @@ import { authMiddleware } from './auth.js'
 const router = Router()
 router.use(authMiddleware)
 
-// Los 5 estados que se muestran como columnas del tablero (las entregadas ya no ocupan tablero).
-const ESTADOS_TABLERO = ['Presupuesto', 'Pendiente', 'EnReparacion', 'EsperandoMaterial', 'Finalizada']
+// Los 6 estados que se muestran como columnas del tablero (las entregadas ya no ocupan tablero).
+const ESTADOS_TABLERO = ['Admision', 'EnReparacion', 'EnPausa', 'EsperandoMaterial', 'Biomecanica', 'Finalizada']
 
-// Estados que forman parte del conteo general (los 6 posibles).
+// Estados que forman parte del conteo general (los 7 posibles).
 const ESTADOS_CONOCIDOS = [...ESTADOS_TABLERO, 'Entregada']
 
 // Selección de campos que necesita cada tarjeta del tablero.

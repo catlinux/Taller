@@ -144,7 +144,12 @@ export default function IntroBienvenida({ nombre, onTerminar }) {
         clearTimeout(temporizador)
         const conteo = data?.conteoPorEstado ?? {}
         setMetricas({
-          taller: (conteo.Pendiente ?? 0) + (conteo.EnReparacion ?? 0) + (conteo.EsperandoMaterial ?? 0),
+          taller:
+            (conteo.Admision ?? 0) +
+            (conteo.EnReparacion ?? 0) +
+            (conteo.EnPausa ?? 0) +
+            (conteo.EsperandoMaterial ?? 0) +
+            (conteo.Biomecanica ?? 0),
           vencidas: data?.vencidas ?? 0,
           avisar: data?.finalizadasSinAvisar ?? 0,
         })

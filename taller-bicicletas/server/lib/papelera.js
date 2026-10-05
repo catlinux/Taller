@@ -1,3 +1,6 @@
+import { normalizarEstado } from './estados.js'
+
+
 // Papelera: guarda una instantánea de cada registro borrado para poder
 // deshacerlo. Las instantáneas viajan en JSON (con las fechas en ISO) y al
 // restaurar se devuelven a su tipo original (Date). La restauración reutiliza
@@ -251,6 +254,9 @@ async function siguienteNumeroOrden(tx, numeroOriginal) {
 // Orden con sus líneas de materiales y de mano de obra.
 async function restaurarOrden(tx, { orden: ordenOriginal, materiales = [], manoObra = [] }, avisos = []) {
   const orden = { ...ordenOriginal }
+  // Una orden archivada con un estado antiguo (Presupuesto/Pendiente) se restaura
+  // ya con el valor nuevo equivalente.
+  orden.estado = normalizarEstado(orden.estado)
   const cliente = await tx.cliente.findUnique({ where: { id: orden.clienteId } })
   if (!cliente) throw new ErrorPapelera('No se puede restaurar la orden porque su cliente ya no existe.')
   if (orden.bicicletaId) {

@@ -168,7 +168,7 @@ async function main() {
   // Órdenes de reparación (9)
   const operaciones = await prisma.operacionManoObra.findMany({ where: { activo: true } })
   if (operaciones.length === 0) throw new Error('Faltan las operaciones: ejecuta antes npm run db:seed')
-  const estados = ['Presupuesto', 'Pendiente', 'EnReparacion', 'EnReparacion', 'EsperandoMaterial', 'Finalizada', 'Finalizada', 'Entregada', 'Entregada']
+  const estados = ['Admision', 'EnPausa', 'EnReparacion', 'EnReparacion', 'EsperandoMaterial', 'Biomecanica', 'Finalizada', 'Finalizada', 'Entregada']
   const problemas = ['Hace ruido al pedalear', 'Los frenos no frenan bien', 'Pinchazo en la rueda trasera', 'El cambio salta de marcha', 'Revisión antes de la temporada', 'Holgura en la dirección', 'La cadena patina']
   const anio = new Date().getFullYear()
   const ahora = Date.now()

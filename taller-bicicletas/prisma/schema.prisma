@@ -155,7 +155,7 @@ model OrdenReparacion {
   fechaEntrada      DateTime  @default(now())
   fechaPrevista     DateTime?
   fechaFinalizacion DateTime? // Se fija (la primera vez) al pasar a estado Finalizada o Entregada
-  estado            String    @default("Presupuesto") // Presupuesto, Pendiente, EnReparacion, EsperandoMaterial, Finalizada, Entregada
+  estado            String    @default("Admision") // Admision, EnReparacion, EnPausa, EsperandoMaterial, Finalizada, Entregada, Biomecanica
   descripcion       String?   // Trabajos realizados
   diagnostico       String?
   recomendaciones   String?

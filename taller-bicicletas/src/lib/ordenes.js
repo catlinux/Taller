@@ -1,15 +1,17 @@
 // Constantes y utilidades compartidas para las órdenes de reparación.
 
 // Estados de una orden: valor interno, etiqueta visible y clases de la "pastilla".
-// Colores: Presupuesto gris, Pendiente azul, EnReparacion azul intenso,
-// EsperandoMaterial naranja, Finalizada verde, Entregada gris apagado.
+// Colores: Admision gris, EnReparacion azul intenso, EnPausa azul suave,
+// EsperandoMaterial naranja, Biomecanica violeta suave, Finalizada verde,
+// Entregada gris apagado.
 export const ESTADOS = [
-  { valor: 'Presupuesto', etiqueta: 'Presupuesto', clase: 'bg-slate-500/10 text-slate-300' },
-  { valor: 'Pendiente', etiqueta: 'Pendiente', clase: 'bg-azul-500/10 text-azul-300' },
+  { valor: 'Admision', etiqueta: 'Admisión', clase: 'bg-slate-500/10 text-slate-300' },
   { valor: 'EnReparacion', etiqueta: 'En reparación', clase: 'bg-azul-500 text-white mantener-blanco' },
+  { valor: 'EnPausa', etiqueta: 'En pausa', clase: 'bg-azul-500/10 text-azul-300' },
   { valor: 'EsperandoMaterial', etiqueta: 'Esperando material', clase: 'bg-naranja-500/10 text-naranja-300' },
   { valor: 'Finalizada', etiqueta: 'Finalizada', clase: 'bg-emerald-500/10 text-emerald-300' },
   { valor: 'Entregada', etiqueta: 'Entregada', clase: 'bg-slate-600/20 text-slate-400' },
+  { valor: 'Biomecanica', etiqueta: 'Biomecánica', clase: 'bg-violet-500/10 text-violet-300' },
 ]
 
 // Tipos de reparación: valor interno y etiqueta visible.

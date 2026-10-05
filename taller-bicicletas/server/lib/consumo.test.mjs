@@ -70,15 +70,16 @@ test('una semana que cruza de año usa el año ISO correcto', () => {
   assert.equal(clavePeriodo(new Date(2021, 0, 1), 'semana'), '2020-S53')
 })
 
-test('por defecto se excluye el estado Presupuesto', () => {
+test('por defecto se incluyen todos los estados', () => {
   assert.deepEqual(resolverEstados(undefined), ESTADOS_CONSUMO_POR_DEFECTO)
-  assert.ok(!resolverEstados(undefined).includes('Presupuesto'))
-  assert.ok(!resolverEstados('').includes('Presupuesto'))
+  assert.deepEqual(ESTADOS_CONSUMO_POR_DEFECTO, ['Admision', 'EnReparacion', 'EnPausa', 'EsperandoMaterial', 'Finalizada', 'Entregada', 'Biomecanica'])
+  assert.ok(resolverEstados('').includes('Admision'))
+  assert.ok(resolverEstados('').includes('Biomecanica'))
 })
 
 test('resolverEstados respeta una lista explícita y descarta valores no válidos', () => {
   assert.deepEqual(resolverEstados('Finalizada,Entregada'), ['Finalizada', 'Entregada'])
-  assert.deepEqual(resolverEstados('Presupuesto,Basura'), ['Presupuesto'])
+  assert.deepEqual(resolverEstados('Biomecanica,Basura'), ['Biomecanica'])
 })
 
 test('el rango de fechas es inclusivo en ambos extremos (fin del día)', () => {

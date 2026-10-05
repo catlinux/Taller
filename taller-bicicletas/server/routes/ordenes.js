@@ -5,21 +5,14 @@ import { precioSinIva } from '../lib/precios.js'
 import { FORMAS_PAGO } from '../lib/pagos.js'
 import { coincideTexto } from '../lib/texto.js'
 import { guardarEnPapelera, descripcionOrden, descripcionLineaMaterial, descripcionLineaManoObra } from '../lib/papelera.js'
+import { ESTADOS_ORDEN } from '../lib/estados.js'
 
 const router = Router()
 
 // Todas las rutas de órdenes requieren autenticación
 router.use(authMiddleware)
 
-// Estados permitidos para una orden de reparación
-export const ESTADOS_ORDEN = [
-  'Presupuesto',
-  'Pendiente',
-  'EnReparacion',
-  'EsperandoMaterial',
-  'Finalizada',
-  'Entregada',
-]
+// Estados permitidos para una orden de reparación (definidos en lib/estados.js).
 
 // Estados en los que la orden está terminada: al entrar en ellos se fija la
 // fecha de finalización (solo la primera vez).
@@ -934,7 +927,7 @@ router.put('/:id/mano-obra/:manoObraId', async (req, res, next) => {
   }
 })
 
-// POST /:id/duplicar -> crea una orden nueva en Presupuesto copiando la orden actual
+// POST /:id/duplicar -> crea una orden nueva en Admision copiando la orden actual
 router.post('/:id/duplicar', async (req, res, next) => {
   try {
     const id = parseId(req.params.id)
@@ -977,14 +970,14 @@ router.post('/:id/duplicar', async (req, res, next) => {
           numeroOrden,
           clienteId: original.clienteId,
           bicicletaId: original.bicicletaId,
-          estado: 'Presupuesto',
+          estado: 'Admision',
           descripcion: original.descripcion,
           diagnostico: original.diagnostico,
           recomendaciones: original.recomendaciones,
           problema: original.problema,
           garantia: original.garantia,
           tipoReparacion: original.tipoReparacion,
-          // La copia es una orden nueva (en Presupuesto): empieza sin cobrar.
+          // La copia es una orden nueva (en Admision): empieza sin cobrar.
           formaPago: 'Pendiente',
           mecanicoId: original.mecanicoId,
           descuentoGlobal: original.descuentoGlobal,

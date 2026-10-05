@@ -7,14 +7,15 @@ import { coincideTexto } from '../lib/texto.js'
 import { IconMas, IconTaller, IconOrdenes, IconAviso, IconReloj, IconCheck } from '../components/Icons.jsx'
 
 // Columnas del tablero, en el orden en que se muestran (las entregadas no ocupan tablero).
-const ESTADOS_TABLERO = ['Presupuesto', 'Pendiente', 'EnReparacion', 'EsperandoMaterial', 'Finalizada']
+const ESTADOS_TABLERO = ['Admision', 'EnReparacion', 'EnPausa', 'EsperandoMaterial', 'Biomecanica', 'Finalizada']
 
 // Punto de color de la cabecera de cada columna.
 const PUNTO_ESTADO = {
-  Presupuesto: 'bg-slate-400',
-  Pendiente: 'bg-azul-400',
+  Admision: 'bg-slate-400',
   EnReparacion: 'bg-azul-500',
+  EnPausa: 'bg-azul-400',
   EsperandoMaterial: 'bg-naranja-400',
+  Biomecanica: 'bg-violet-400',
   Finalizada: 'bg-ok',
 }
 
@@ -81,7 +82,12 @@ export default function Dashboard() {
   })
 
   const conteo = data?.conteoPorEstado ?? {}
-  const enTaller = (conteo.Pendiente ?? 0) + (conteo.EnReparacion ?? 0) + (conteo.EsperandoMaterial ?? 0)
+  const enTaller =
+    (conteo.Admision ?? 0) +
+    (conteo.EnReparacion ?? 0) +
+    (conteo.EnPausa ?? 0) +
+    (conteo.EsperandoMaterial ?? 0) +
+    (conteo.Biomecanica ?? 0)
   const vencidas = data?.vencidas ?? 0
   const sinAvisar = data?.finalizadasSinAvisar ?? 0
 
@@ -122,7 +128,7 @@ export default function Dashboard() {
         <>
           <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <Indicador etiqueta="En el taller" valor={enTaller} icono={IconTaller} />
-            <Indicador etiqueta="Presupuestos" valor={conteo.Presupuesto ?? 0} icono={IconOrdenes} />
+            <Indicador etiqueta="En admisión" valor={conteo.Admision ?? 0} icono={IconOrdenes} />
             <Indicador etiqueta="Vencidas" valor={vencidas} icono={IconAviso} tono={vencidas > 0 ? 'naranja' : 'azul'} />
             <Indicador etiqueta="Listas para avisar" valor={sinAvisar} icono={IconReloj} tono={sinAvisar > 0 ? 'naranja' : 'azul'} />
             <Indicador etiqueta="Entregadas hoy" valor={data?.entregadasHoy ?? 0} icono={IconCheck} tono="verde" />
@@ -199,7 +205,8 @@ export default function Dashboard() {
                             <span className={`badge px-2 py-0.5 text-[10px] font-medium ${ 
                               orden.estado === 'Finalizada' ? 'bg-ok/10 text-ok' : 
                               orden.estado === 'EsperandoMaterial' ? 'bg-naranja-500/10 text-naranja-400' : 
-                              orden.estado === 'Presupuesto' ? 'bg-slate-500/10 text-slate-400' : 'bg-azul-500/10 text-azul-400'
+                              orden.estado === 'Biomecanica' ? 'bg-violet-500/10 text-violet-400' : 
+                              orden.estado === 'Admision' ? 'bg-slate-500/10 text-slate-400' : 'bg-azul-500/10 text-azul-400'
                             }`}>
                               {estadoInfo(orden.estado).etiqueta}
                             </span>

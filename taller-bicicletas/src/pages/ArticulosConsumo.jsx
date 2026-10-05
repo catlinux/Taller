@@ -71,9 +71,8 @@ const OPCIONES_AGRUPAR = [
   { valor: 'anio', etiqueta: 'Año' },
 ]
 
-// Estados seleccionados por defecto: todos menos «Presupuesto» (mismo criterio que
-// el backend: un presupuesto no es consumo real).
-const ESTADOS_POR_DEFECTO = ESTADOS.map((estado) => estado.valor).filter((valor) => valor !== 'Presupuesto')
+// Estados seleccionados por defecto: todos (ya no hay presupuestos que excluir).
+const ESTADOS_POR_DEFECTO = ESTADOS.map((estado) => estado.valor)
 
 const FORMATO_CANTIDAD = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 })
 
@@ -306,7 +305,7 @@ export default function ArticulosConsumo() {
                 </label>
               ))}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Los presupuestos no cuentan como consumo real (desmarcados por defecto).</p>
+            <p className="mt-2 text-xs text-slate-500">Por defecto cuentan todos los estados.</p>
           </div>
         </div>
       </section>

@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import prisma, { carpetaBackups, rutaBaseActiva } from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
+import { migrarEstados } from '../lib/estados.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -189,6 +190,11 @@ router.post('/:id/restaurar', async (req, res, next) => {
     // restaurado (más antiguo), así que puede faltar información. Sincronizamos
     // la tabla con los ficheros que hay en disco para no perder ninguna copia.
     await sincronizarBackups(seguridad)
+
+    // Una copia antigua puede traer estados de orden antiguos: se migran.
+    await migrarEstados(prisma).catch((error) => {
+      console.error('Error al migrar los estados de las órdenes:', error)
+    })
 
     return res.json({ success: true })
   } catch (error) {

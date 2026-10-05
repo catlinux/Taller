@@ -1,3 +1,5 @@
+import { ESTADOS_ORDEN } from './estados.js'
+
 // Cálculo del consumo de materiales/productos por periodo.
 //
 // El «consumo» de un artículo en un periodo es la suma de las cantidades de sus
@@ -11,10 +13,9 @@
 
 const MS_DIA = 24 * 60 * 60 * 1000
 
-// Estados de orden válidos y estados excluidos por defecto (un presupuesto no
-// es un consumo real).
-export const ESTADOS_VALIDOS = ['Presupuesto', 'Pendiente', 'EnReparacion', 'EsperandoMaterial', 'Finalizada', 'Entregada']
-export const ESTADOS_CONSUMO_POR_DEFECTO = ESTADOS_VALIDOS.filter((estado) => estado !== 'Presupuesto')
+// Estados de orden válidos y estados incluidos en el consumo por defecto (todos).
+export const ESTADOS_VALIDOS = ESTADOS_ORDEN
+export const ESTADOS_CONSUMO_POR_DEFECTO = ESTADOS_VALIDOS
 
 // Agrupaciones admitidas por el listado de consumo.
 export const AGRUPACIONES = ['ninguno', 'dia', 'semana', 'mes', 'anio']
@@ -128,8 +129,8 @@ export function etiquetaPeriodo(fecha, agrupar) {
 }
 
 // Resuelve la lista de estados a incluir: si no se indica nada (o solo hay
-// valores vacíos) se usan todos menos Presupuesto; si se indica una lista, solo
-// se conservan los estados válidos.
+// valores vacíos) se usan todos; si se indica una lista, solo se conservan los
+// estados válidos.
 export function resolverEstados(valor) {
   if (valor === undefined || valor === null) return [...ESTADOS_CONSUMO_POR_DEFECTO]
   const texto = Array.isArray(valor) ? valor.join(',') : String(valor)

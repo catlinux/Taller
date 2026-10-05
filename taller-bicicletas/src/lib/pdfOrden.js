@@ -1,5 +1,5 @@
 // Generación del PDF imprimible de una orden de reparación
-// (Presupuesto / Parte de taller) con jsPDF + jspdf-autotable.
+// (Parte de taller) con jsPDF + jspdf-autotable.
 //
 // El documento NUNCA incluye datos internos: forma de pago, estado de pago,
 // observaciones internas, seguimiento ni "cliente avisado".
@@ -345,7 +345,7 @@ function dibujarCabecera(doc, orden, empresa, logo) {
 
   // Columna derecha: título azul y, muy cerca (2 mm), el recuadro del número
   // de orden. La columna izquierda se alinea arriba con el título.
-  const titulo = orden.estado === 'Presupuesto' ? 'PRESUPUESTO' : 'PARTE DE TALLER'
+  const titulo = 'PARTE DE TALLER'
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(20)
   doc.setTextColor(...AZUL)
