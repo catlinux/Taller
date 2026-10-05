@@ -24,7 +24,7 @@ export const AGRUPACIONES = ['ninguno', 'dia', 'semana', 'mes', 'anio']
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 // Convierte un valor en una fecha válida (Date o cadena ISO); null si no lo es.
-function aFecha(valor) {
+export function aFecha(valor) {
   if (valor instanceof Date) return Number.isFinite(valor.getTime()) ? valor : null
   if (valor === null || valor === undefined || valor === '') return null
   const fecha = new Date(valor)
@@ -32,13 +32,13 @@ function aFecha(valor) {
 }
 
 // Convierte un valor en número finito; 0 si no lo es.
-function aNumero(valor) {
+export function aNumero(valor) {
   const numero = Number(valor)
   return Number.isFinite(numero) ? numero : 0
 }
 
 // Redondeo exacto a 4 decimales (mismo criterio que server/lib/precios.js).
-function redondear4(valor) {
+export function redondear4(valor) {
   const escalado = Number(`${Number(Number(valor).toFixed(8))}e4`)
   return (Number.isFinite(escalado) ? Math.round(escalado) : Math.round(Number(valor) * 10000)) / 10000
 }

@@ -158,6 +158,9 @@ export default function DataTable({
   // Selección opcional de filas. Objeto con { todas, algunas, estaSeleccionada(fila),
   // alternar(fila), alternarTodas() }; si no se pasa, la tabla no muestra casillas.
   seleccion = null,
+  // Función opcional (fila) => clases extra para esa fila (p. ej. resaltar la
+  // seleccionada). Si no se pasa, las filas se muestran igual que siempre.
+  clasePorFila,
 }) {
   const [filasPorPagina, setFilasPorPagina] = useFilasPorPagina()
   const [orden, setOrden] = useState(ordenInicial)
@@ -325,7 +328,7 @@ export default function DataTable({
                   key={clave}
                   onClick={onFila ? () => onFila(fila) : undefined}
                   style={{ height: 'var(--fila-alto)' }}
-                  className={`transition hover:bg-antracita-700/30 ${onFila ? 'cursor-pointer' : ''}`}
+                  className={`transition hover:bg-antracita-700/30 ${onFila ? 'cursor-pointer' : ''} ${clasePorFila ? (clasePorFila(fila) ?? '') : ''}`}
                 >
                   {tieneSeleccion && (
                     <td className="td align-middle">

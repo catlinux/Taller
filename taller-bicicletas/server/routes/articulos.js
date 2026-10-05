@@ -5,6 +5,7 @@ import { precioSinIva } from '../lib/precios.js'
 import { sinStockDesdeNuevo } from '../lib/stock.js'
 import { filtrarObsoletos } from '../lib/obsoletos.js'
 import { agruparConsumo, resolverEstados, AGRUPACIONES, rangoDeFechas, parseFechaISO } from '../lib/consumo.js'
+import { serieConsumo, AGRUPACIONES_SERIE, PERIODOS_POR_DEFECTO } from '../lib/consumoSerie.js'
 import { coincideTexto } from '../lib/texto.js'
 import { guardarEnPapelera, descripcionArticulo } from '../lib/papelera.js'
 
@@ -301,6 +302,95 @@ router.get('/consumo', async (req, res, next) => {
       agrupar,
       ...resultado,
     })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+// GET /:id -> artículo concreto
+// GET /consumo-serie -> serie continua de consumo de un artículo por periodo
+// (semanas, meses o años) para la gráfica de «Artículos > Consumo». Reutiliza
+// los mismos filtros de estados y mecánico que /consumo. Debe declararse ANTES
+// de '/:id' para que no la capture la ruta con parámetro.
+router.get('/consumo-serie', async (req, res, next) => {
+  try {
+    const referencia = textoDeQuery(req.query.referencia)
+    if (referencia === null) {
+      return res.status(400).json({ error: 'referencia es obligatoria' })
+    }
+
+    const agrupar = textoDeQuery(req.query.agrupar) ?? 'semana'
+    if (!AGRUPACIONES_SERIE.includes(agrupar)) {
+      return res.status(400).json({ error: `agrupar debe ser uno de: ${AGRUPACIONES_SERIE.join(', ')}` })
+    }
+
+    // Periodos: por defecto 12 semanas, 12 meses o 5 años; 1-120 si se indica.
+    let periodos = PERIODOS_POR_DEFECTO[agrupar]
+    const periodosTexto = textoDeQuery(req.query.periodos)
+    if (periodosTexto !== null) {
+      periodos = Number(periodosTexto)
+      if (!Number.isInteger(periodos) || periodos < 1 || periodos > 120) {
+        return res.status(400).json({ error: 'periodos debe ser un entero entre 1 y 120' })
+      }
+    }
+
+    // Por defecto se incluyen todos los estados.
+    const estados = resolverEstados(req.query.estados)
+
+    // Rango de la serie (inicio del primer periodo y fin del último) calculado sin
+    // datos: solo sirve para limitar la consulta a las líneas de ese intervalo.
+    const { desde, hasta } = serieConsumo([], { agrupar, periodos })
+    const rango = rangoDeFechas(desde, hasta)
+
+    const where = {
+      referencia,
+      orden: {
+        estado: { in: estados },
+        fechaEntrada: { gte: rango.desde, lte: rango.hasta },
+      },
+    }
+
+    if (req.query.mecanicoId !== undefined && String(req.query.mecanicoId).trim() !== '') {
+      const mecanicoId = parseId(req.query.mecanicoId)
+      if (mecanicoId === null) {
+        return res.status(400).json({ error: 'mecanicoId no válido' })
+      }
+      where.orden.mecanicoId = mecanicoId
+    }
+
+    const lineas = await prisma.ordenMaterial.findMany({
+      where,
+      select: {
+        descripcion: true,
+        cantidad: true,
+        precioNeto: true,
+        orden: { select: { id: true, fechaEntrada: true } },
+      },
+    })
+
+    const datos = lineas.map((linea) => ({
+      cantidad: linea.cantidad,
+      precioNeto: linea.precioNeto,
+      fecha: linea.orden.fechaEntrada,
+      ordenId: linea.orden.id,
+    }))
+
+    // Descripción: la de la línea más reciente o, si no hay líneas, la del catálogo.
+    let masReciente = null
+    for (const linea of lineas) {
+      if (masReciente === null || new Date(linea.orden.fechaEntrada) > new Date(masReciente.orden.fechaEntrada)) {
+        masReciente = linea
+      }
+    }
+    let descripcion = masReciente?.descripcion || null
+    if (!descripcion) {
+      const articulo = await prisma.articulo.findFirst({ where: { referencia }, select: { descripcion: true } })
+      descripcion = articulo?.descripcion ?? null
+    }
+
+    const serie = serieConsumo(datos, { agrupar, periodos })
+
+    return res.json({ referencia, descripcion, ...serie })
   } catch (error) {
     return next(error)
   }

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import ArticulosTabs from '../components/ArticulosTabs.jsx'
 import DataTable from '../components/DataTable.jsx'
 import MenuExportar from '../components/MenuExportar.jsx'
+import GraficaConsumo from '../components/GraficaConsumo.jsx'
 import { IconBuscar } from '../components/Icons.jsx'
 import { apiGet } from '../lib/api.js'
 import { exportarExcel, fechaFichero } from '../lib/exportarExcel.js'
@@ -119,6 +120,8 @@ export default function ArticulosConsumo() {
   const [mecanicoId, setMecanicoId] = useState('')
   const [exportando, setExportando] = useState(false)
   const [errorAccion, setErrorAccion] = useState('')
+  // Artículo (fila) seleccionado en la tabla para mostrar su gráfica de consumo.
+  const [articuloSeleccionado, setArticuloSeleccionado] = useState(null)
 
   const rangoInvalido = Boolean(desde && hasta && desde > hasta)
   const sinEstados = estados.size === 0
@@ -177,6 +180,13 @@ export default function ArticulosConsumo() {
       else siguiente.add(valor)
       return siguiente
     })
+  }
+
+  // Clic en una fila: selecciona su artículo (o lo deselecciona si ya lo estaba).
+  function alternarSeleccion(fila) {
+    setArticuloSeleccionado((anterior) => (
+      anterior && anterior.referencia === fila.referencia ? null : fila
+    ))
   }
 
 
@@ -353,10 +363,21 @@ export default function ArticulosConsumo() {
         <TarjetaResumen etiqueta="Coste estimado" valor={formatearEuros(totales?.coste ?? 0)} />
       </div>
 
+      <GraficaConsumo
+        referencia={articuloSeleccionado?.referencia ?? ''}
+        descripcion={articuloSeleccionado?.descripcion ?? ''}
+        estados={filtros.estados}
+        mecanicoId={filtros.mecanicoId}
+        token={token}
+        onQuitar={() => setArticuloSeleccionado(null)}
+      />
+
       <DataTable
         columnas={columnas}
         filas={filas}
         claveFila={(fila) => `${fila.articuloId ?? 'linea'}:${fila.referencia}:${fila.descripcion}`}
+        onFila={alternarSeleccion}
+        clasePorFila={(fila) => (articuloSeleccionado && articuloSeleccionado.referencia === fila.referencia ? 'bg-azul-500/10' : '')}
         ordenInicial={{ clave: 'cantidad', dir: 'desc' }}
         cargando={isLoading}
         etiquetaPlural="artículos"
