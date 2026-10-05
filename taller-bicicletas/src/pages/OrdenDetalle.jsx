@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useAjustes } from '../context/AjustesContext.jsx'
 import { useDeshacer } from '../context/DeshacerContext.jsx'
 import { apiGet, apiPost, apiPut, apiDelete } from '../lib/api.js'
-import { ESTADOS, TIPOS_REPARACION } from '../lib/ordenes.js'
+import { ESTADOS, TIPOS_REPARACION, formatearFecha } from '../lib/ordenes.js'
 import { FORMAS_PAGO } from '../lib/pagos.js'
 import ClienteSelector from '../components/orden/ClienteSelector.jsx'
 import BicicletaSelector from '../components/orden/BicicletaSelector.jsx'
@@ -352,9 +352,15 @@ export default function OrdenDetalle() {
         <p className="text-sm text-azul-300">Taller</p>
         <h1 className="mt-1 text-3xl font-bold">{esNueva ? 'Nueva orden' : `Orden ${form.numeroOrden || ''}`}</h1>
         <p className="mt-2 text-slate-400">Ficha de la orden de reparación.</p>
+        {orden?.exportadaFactusolEn && (
+          <span className="mt-3 inline-block rounded-full bg-azul-500/10 px-3 py-1 text-xs font-medium text-azul-300">
+            Exportada a Factusol{orden.albaranFactusol ? ` (albarán ${orden.albaranFactusol})` : ''} el {formatearFecha(orden.exportadaFactusolEn)}
+          </span>
+        )}
       </div>
 
       {errorAccion && <p role="alert" className="mb-5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorAccion}</p>}
+      {orden?.exportadaFactusolEn && <p role="status" className="mb-5 rounded-lg border border-naranja-500/30 bg-naranja-500/10 px-4 py-3 text-sm text-naranja-300">Esta orden ya se exportó a Factusol: los cambios no se trasladan solos.</p>}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">

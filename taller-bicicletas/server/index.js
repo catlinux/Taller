@@ -116,6 +116,13 @@ rellenarSinStock(prisma).catch((error) => {
   console.error('Error al rellenar la fecha sin stock de los artículos:', error)
 })
 
+// Las órdenes terminadas antes de existir fechaFinalizacion toman su última
+// modificación, para que la fecha del albarán de Factusol no cambie al
+// marcarlas como exportadas (idempotente).
+prisma.$executeRaw`UPDATE OrdenReparacion SET fechaFinalizacion = updatedAt WHERE fechaFinalizacion IS NULL AND estado IN ('Finalizada', 'Entregada')`.catch((error) => {
+  console.error('Error al rellenar la fecha de finalización de las órdenes:', error)
+})
+
 // Poda la papelera: borra definitivamente lo que lleve más de 30 días archivado.
 // Se ejecuta al arrancar y luego cada 24 horas.
 purgarAntiguas(prisma).catch((error) => {
