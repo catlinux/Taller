@@ -16,7 +16,7 @@ const PUNTO_ESTADO = {
   EnPausa: 'bg-red-500',
   EsperandoMaterial: 'bg-pink-400',
   Biomecanica: 'bg-violet-400',
-  Finalizada: 'bg-ok',
+  Finalizada: 'bg-azul-500',
 }
 
 // Estilos del cuadro de icono de cada indicador según su tono.
@@ -203,7 +203,8 @@ export default function Dashboard() {
                           <td className="px-4 py-3 text-xs text-slate-400">{bici}</td>
                           <td className="px-4 py-3">
                             <span className={`badge px-2 py-0.5 text-[10px] font-medium ${ 
-                              orden.estado === 'Finalizada' ? 'bg-ok/10 text-ok' : 
+                              orden.estado === 'Finalizada' ? 'bg-azul-500/10 text-azul-400' : 
+                              orden.estado === 'Entregada' ? 'bg-ok/10 text-ok' : 
                               orden.estado === 'EsperandoMaterial' ? 'bg-pink-500/10 text-pink-400' : 
                               orden.estado === 'Biomecanica' ? 'bg-violet-500/10 text-violet-400' : 
                               orden.estado === 'Admision' ? 'bg-yellow-500/10 text-yellow-400' : 
