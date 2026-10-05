@@ -6,6 +6,7 @@ import { sinStockDesdeNuevo } from '../lib/stock.js'
 import { filtrarObsoletos } from '../lib/obsoletos.js'
 import { agruparConsumo, resolverEstados, AGRUPACIONES, rangoDeFechas, parseFechaISO } from '../lib/consumo.js'
 import { serieConsumo, AGRUPACIONES_SERIE, PERIODOS_POR_DEFECTO } from '../lib/consumoSerie.js'
+import { rankingConsumo, AGRUPACIONES_RANKING, METRICAS_RANKING, LIMITE_MINIMO, LIMITE_MAXIMO } from '../lib/consumoRanking.js'
 import { coincideTexto } from '../lib/texto.js'
 import { guardarEnPapelera, descripcionArticulo } from '../lib/papelera.js'
 
@@ -412,6 +413,102 @@ router.get('/consumo-serie', async (req, res, next) => {
     const serie = serieConsumo(datos, { agrupar, periodos })
 
     return res.json({ referencia: referencia ?? null, descripcion, ...serie })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+// GET /:id -> artículo concreto
+// GET /consumo-ranking -> comparativa de productos por periodo (semana, mes,
+// trimestre o año) para la gráfica de «Artículos > Consumo». Reutiliza los
+// mismos filtros de estados, mecánico, familia y proveedor que /consumo-serie.
+// Debe declararse ANTES de '/:id' para que no la capture esa ruta.
+router.get('/consumo-ranking', async (req, res, next) => {
+  try {
+    const agrupar = textoDeQuery(req.query.agrupar) ?? 'mes'
+    if (!AGRUPACIONES_RANKING.includes(agrupar)) {
+      return res.status(400).json({ error: `agrupar debe ser uno de: ${AGRUPACIONES_RANKING.join(', ')}` })
+    }
+
+    const metrica = textoDeQuery(req.query.metrica) ?? 'unidades'
+    if (!METRICAS_RANKING.includes(metrica)) {
+      return res.status(400).json({ error: `metrica debe ser una de: ${METRICAS_RANKING.join(', ')}` })
+    }
+
+    // Límite: 10 por defecto; 1-50 si se indica.
+    let limite = 10
+    const limiteTexto = textoDeQuery(req.query.limite)
+    if (limiteTexto !== null) {
+      limite = Number(limiteTexto)
+      if (!Number.isInteger(limite) || limite < LIMITE_MINIMO || limite > LIMITE_MAXIMO) {
+        return res.status(400).json({ error: `limite debe ser un entero entre ${LIMITE_MINIMO} y ${LIMITE_MAXIMO}` })
+      }
+    }
+
+    // Fecha opcional: cualquier día del periodo a mostrar (por defecto, hoy).
+    const fechaTexto = textoDeQuery(req.query.fecha)
+    let fecha
+    if (fechaTexto !== null) {
+      fecha = parseFechaISO(fechaTexto)
+      if (fecha === null) {
+        return res.status(400).json({ error: 'fecha debe tener el formato AAAA-MM-DD' })
+      }
+    }
+
+    // Por defecto se incluyen todos los estados.
+    const estados = resolverEstados(req.query.estados)
+
+    // Rango que abarca el periodo mostrado y el anterior (calculado sin datos).
+    const { anteriorDesde, hasta } = rankingConsumo([], { agrupar, fecha, metrica, limite })
+    const rango = rangoDeFechas(anteriorDesde, hasta)
+
+    const where = {
+      orden: {
+        estado: { in: estados },
+        fechaEntrada: { gte: rango.desde, lte: rango.hasta },
+      },
+    }
+
+    if (req.query.mecanicoId !== undefined && String(req.query.mecanicoId).trim() !== '') {
+      const mecanicoId = parseId(req.query.mecanicoId)
+      if (mecanicoId === null) {
+        return res.status(400).json({ error: 'mecanicoId no válido' })
+      }
+      where.orden.mecanicoId = mecanicoId
+    }
+
+    // Filtros de familia y proveedor, igual que en /consumo.
+    const filtroArticulo = {}
+    const familia = textoDeQuery(req.query.familia)
+    if (familia !== null) filtroArticulo.familia = familia
+    const proveedor = textoDeQuery(req.query.proveedor)
+    if (proveedor !== null) filtroArticulo.proveedor = proveedor
+    if (Object.keys(filtroArticulo).length > 0) where.articulo = filtroArticulo
+
+    // Solo se cargan los campos que necesita el ranking.
+    const lineas = await prisma.ordenMaterial.findMany({
+      where,
+      select: {
+        referencia: true,
+        descripcion: true,
+        cantidad: true,
+        precioNeto: true,
+        orden: { select: { id: true, fechaEntrada: true } },
+        articulo: { select: { familia: true } },
+      },
+    })
+
+    const datos = lineas.map((linea) => ({
+      referencia: linea.referencia,
+      descripcion: linea.descripcion,
+      cantidad: linea.cantidad,
+      precioNeto: linea.precioNeto,
+      fecha: linea.orden.fechaEntrada,
+      ordenId: linea.orden.id,
+      familia: linea.articulo?.familia ?? null,
+    }))
+
+    return res.json(rankingConsumo(datos, { agrupar, fecha, metrica, limite }))
   } catch (error) {
     return next(error)
   }

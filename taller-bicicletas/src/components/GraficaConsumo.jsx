@@ -3,11 +3,11 @@ import { useQuery } from 'react-query'
 import { apiGet } from '../lib/api.js'
 import { formatearEuros } from '../lib/ordenes.js'
 
-// Gráfica de barras del consumo por semanas, meses, trimestres o años. Se dibuja
-// con SVG propio (sin dependencias) a partir de la serie continua que devuelve
-// /api/articulos/consumo-serie. Con un artículo seleccionado muestra su consumo;
-// sin selección, suma todos los productos. Respeta los filtros de estados,
-// mecánico, familia y proveedor que se aplican en el resto de la página.
+// Gráfica de barras del consumo de un artículo por semanas, meses, trimestres o
+// años. Se dibuja con SVG propio (sin dependencias) a partir de la serie continua
+// que devuelve /api/articulos/consumo-serie. Solo se muestra cuando hay un
+// artículo seleccionado; sin referencia devuelve null. Respeta los filtros de
+// estados, mecánico, familia y proveedor que se aplican en el resto de la página.
 
 // Agrupaciones de la gráfica: valor interno, etiqueta, periodos disponibles y el
 // número de periodos que se usa por defecto en cada una.
@@ -79,14 +79,11 @@ function Segmentado({ etiqueta, opciones, valor, onChange }) {
   )
 }
 
-// Gráfica de consumo: de un artículo seleccionado o, sin selección, de todos los
-// productos a la vez.
+// Gráfica de consumo (evolución temporal) del artículo seleccionado.
 export default function GraficaConsumo({ referencia = '', descripcion = '', estados = '', mecanicoId = '', familia = '', proveedor = '', token, onQuitar }) {
-  const esTodos = !referencia
   const [agrupar, setAgrupar] = useState('mes')
   const [periodos, setPeriodos] = useState(12)
-  // En modo «todos» el importe tiene más sentido que las unidades.
-  const [metrica, setMetrica] = useState(esTodos ? 'importe' : 'unidades')
+  const [metrica, setMetrica] = useState('unidades')
   const [activo, setActivo] = useState(null)
   const contenedorRef = useRef(null)
   const [ancho, setAncho] = useState(680)
@@ -106,12 +103,12 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
     return () => observador.disconnect()
   }, [referencia])
 
-  // Al cambiar de modo/artículo se vuelve a la vista por defecto (meses, un año y
-  // la métrica propia del modo).
+  // Al cambiar de artículo se vuelve a la vista por defecto (meses, un año y
+  // unidades).
   useEffect(() => {
     setAgrupar('mes')
     setPeriodos(12)
-    setMetrica(referencia ? 'unidades' : 'importe')
+    setMetrica('unidades')
     setActivo(null)
   }, [referencia])
 
@@ -131,6 +128,10 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
     () => apiGet(`/api/articulos/consumo-serie?${consulta}`, token),
     { enabled: Boolean(token), keepPreviousData: true },
   )
+
+  // Sin artículo seleccionado no hay gráfica de evolución: la comparativa entre
+  // productos la cubre el ranking de «Comparativa de productos».
+  if (!referencia) return null
 
   const puntos = data?.puntos ?? []
   const totales = data?.totales ?? { cantidad: 0, importe: 0, ordenes: 0, articulos: 0 }
@@ -158,7 +159,7 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
   const xCentro = (indice) => xBanda(indice) + bandaAncho / 2
   const yValor = (valor) => MARGEN.arriba + altoUtil - (escala.maximo > 0 ? (valor / escala.maximo) * altoUtil : 0)
   const baseY = MARGEN.arriba + altoUtil
-  const sujeto = esTodos ? 'todos los productos' : referencia
+  const sujeto = referencia
   const ariaLabel = puntos.length > 0
     ? `Consumo de ${sujeto} por ${agrupacion.etiqueta.toLowerCase()}: ${formatearCantidad(totales.cantidad)} unidades y ${formatearEuros(totales.importe)} sin IVA en ${totales.ordenes} órdenes.`
     : `Consumo de ${sujeto}.`
@@ -168,27 +169,18 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white">Gráfica de consumo</h2>
-          {esTodos ? (
-            <>
-              <p className="mt-1 text-sm font-medium text-white">Consumo de todos los productos</p>
-              <p className="mt-0.5 text-sm text-slate-400">Haz clic en un artículo de la tabla para ver solo el suyo.</p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-slate-400">
-              <span className="font-medium text-white">{referencia}</span>
-              {descripcionMostrada && <span> · {descripcionMostrada}</span>}
-            </p>
-          )}
+          <p className="mt-1 text-sm text-slate-400">
+            <span className="font-medium text-white">{referencia}</span>
+            {descripcionMostrada && <span> · {descripcionMostrada}</span>}
+          </p>
         </div>
-        {!esTodos && (
-          <button
-            type="button"
-            onClick={onQuitar}
-            className="rounded-lg border border-antracita-600 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-antracita-700 hover:text-white"
-          >
-            Quitar selección
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onQuitar}
+          className="rounded-lg border border-antracita-600 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-antracita-700 hover:text-white"
+        >
+          Quitar selección
+        </button>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -223,7 +215,6 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
         <span className="text-slate-400">Unidades: <span className="tabular-nums text-slate-200">{formatearCantidad(totales.cantidad)}</span></span>
         <span className="text-slate-400">Importe sin IVA: <span className="tabular-nums text-slate-200">{formatearEuros(totales.importe)}</span></span>
         <span className="text-slate-400">Órdenes: <span className="tabular-nums text-slate-200">{totales.ordenes}</span></span>
-        {esTodos && <span className="text-slate-400">Artículos distintos: <span className="tabular-nums text-slate-200">{totales.articulos ?? 0}</span></span>}
       </div>
 
       <div ref={contenedorRef} className="relative">
@@ -281,7 +272,7 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
               <line x1={MARGEN.izquierda} y1={baseY} x2={ancho - MARGEN.derecha} y2={baseY} stroke="rgb(var(--ant-600))" strokeWidth="1" />
 
               {maximo === 0 && (
-                <text x={MARGEN.izquierda + anchoUtil / 2} y={MARGEN.arriba + altoUtil / 2} textAnchor="middle" fontSize="13" fill="rgb(var(--ant-500))">{esTodos ? 'Sin consumo de ningún producto en este periodo.' : 'Sin consumo en este periodo.'}</text>
+                <text x={MARGEN.izquierda + anchoUtil / 2} y={MARGEN.arriba + altoUtil / 2} textAnchor="middle" fontSize="13" fill="rgb(var(--ant-500))">Sin consumo en este periodo.</text>
               )}
             </svg>
 
@@ -290,7 +281,7 @@ export default function GraficaConsumo({ referencia = '', descripcion = '', esta
                 className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-antracita-600 bg-antracita-950 px-3 py-1.5 text-xs text-white shadow-2xl"
                 style={{ left: Math.min(Math.max(xCentro(activo), 90), Math.max(90, ancho - 90)), top: yValor(valores[activo]) - 8 }}
               >
-                {`${puntos[activo].etiqueta}: ${formatearCantidad(puntos[activo].cantidad)} unidades · ${puntos[activo].ordenes} ${puntos[activo].ordenes === 1 ? 'orden' : 'órdenes'} · ${formatearEuros(puntos[activo].importe)}${esTodos && puntos[activo].articulos > 1 ? ` · ${puntos[activo].articulos} artículos` : ''}`}
+                {`${puntos[activo].etiqueta}: ${formatearCantidad(puntos[activo].cantidad)} unidades · ${puntos[activo].ordenes} ${puntos[activo].ordenes === 1 ? 'orden' : 'órdenes'} · ${formatearEuros(puntos[activo].importe)}`}
               </div>
             )}
           </>

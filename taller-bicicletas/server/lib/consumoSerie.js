@@ -23,13 +23,13 @@ function dosDigitos(valor) {
 }
 
 // Formatea una fecha local como 'AAAA-MM-DD'.
-function aIso(fecha) {
+export function aIso(fecha) {
   return `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-${dosDigitos(fecha.getDate())}`
 }
 
 // Primer día del periodo (lunes de la semana, día 1 del mes, primer día del
 // trimestre natural, 1 de enero).
-function inicioDePeriodo(fecha, agrupar) {
+export function inicioDePeriodo(fecha, agrupar) {
   if (agrupar === 'semana') return lunesDeSemana(fecha)
   if (agrupar === 'mes') return new Date(fecha.getFullYear(), fecha.getMonth(), 1)
   if (agrupar === 'trimestre') return new Date(fecha.getFullYear(), Math.floor(fecha.getMonth() / 3) * 3, 1)
@@ -38,7 +38,7 @@ function inicioDePeriodo(fecha, agrupar) {
 
 // Último día del periodo (domingo de la semana, último día del mes, último día
 // del trimestre, 31 de diciembre).
-function finDePeriodo(inicio, agrupar) {
+export function finDePeriodo(inicio, agrupar) {
   if (agrupar === 'semana') return new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 6)
   if (agrupar === 'mes') return new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0)
   if (agrupar === 'trimestre') return new Date(inicio.getFullYear(), inicio.getMonth() + 3, 0)
@@ -46,7 +46,7 @@ function finDePeriodo(inicio, agrupar) {
 }
 
 // Inicio del periodo inmediatamente anterior a uno dado.
-function inicioAnterior(inicio, agrupar) {
+export function inicioAnterior(inicio, agrupar) {
   if (agrupar === 'semana') return new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() - 7)
   if (agrupar === 'mes') return new Date(inicio.getFullYear(), inicio.getMonth() - 1, 1)
   if (agrupar === 'trimestre') return new Date(inicio.getFullYear(), inicio.getMonth() - 3, 1)

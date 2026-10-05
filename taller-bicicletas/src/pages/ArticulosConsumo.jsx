@@ -5,6 +5,7 @@ import ArticulosTabs from '../components/ArticulosTabs.jsx'
 import DataTable from '../components/DataTable.jsx'
 import MenuExportar from '../components/MenuExportar.jsx'
 import GraficaConsumo from '../components/GraficaConsumo.jsx'
+import RankingConsumo from '../components/RankingConsumo.jsx'
 import { IconBuscar } from '../components/Icons.jsx'
 import { apiGet } from '../lib/api.js'
 import { exportarExcel, fechaFichero } from '../lib/exportarExcel.js'
@@ -362,6 +363,16 @@ export default function ArticulosConsumo() {
         <TarjetaResumen etiqueta="Importe sin IVA" valor={formatearEuros(totales?.importe ?? 0)} />
         <TarjetaResumen etiqueta="Coste estimado" valor={formatearEuros(totales?.coste ?? 0)} />
       </div>
+
+      <RankingConsumo
+        estados={filtros.estados}
+        mecanicoId={filtros.mecanicoId}
+        familia={filtros.familia}
+        proveedor={filtros.proveedor}
+        token={token}
+        seleccionada={articuloSeleccionado?.referencia ?? ''}
+        onSeleccionar={alternarSeleccion}
+      />
 
       <GraficaConsumo
         referencia={articuloSeleccionado?.referencia ?? ''}
