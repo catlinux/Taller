@@ -30,3 +30,6 @@ agentrelay.config.json
 *.db
 *.db-journal
 ESTADO-PROYECTO.md
+
+# Material de importación a Factusol (datos reales): nunca a GitHub
+docs/import/
