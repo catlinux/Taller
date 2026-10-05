@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from 'react-query'
 import { apiGet } from '../lib/api.js'
 import { formatearEuros } from '../lib/ordenes.js'
@@ -104,12 +104,15 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
   const [fecha, setFecha] = useState('')
   const [activo, setActivo] = useState(null)
 
-  const contenedorRef = useRef(null)
+  // El contenedor solo existe cuando ya hay datos: se guarda el nodo en el estado
+  // (ref con callback) para medirlo en cuanto aparece y no quedarse con el ancho
+  // por defecto, que estiraba la gráfica y ampliaba textos y barras.
+  const [nodoContenedor, setNodoContenedor] = useState(null)
   const [ancho, setAncho] = useState(720)
 
   // Mide el ancho disponible para dibujar la gráfica sin deformarla.
   useEffect(() => {
-    const nodo = contenedorRef.current
+    const nodo = nodoContenedor
     if (!nodo) return undefined
     const medir = () => setAncho(nodo.clientWidth || 720)
     medir()
@@ -120,7 +123,7 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
     const observador = new ResizeObserver(medir)
     observador.observe(nodo)
     return () => observador.disconnect()
-  }, [])
+  }, [nodoContenedor])
 
   // Consulta con los MISMOS estados, mecánico, familia y proveedor que la página.
   const consulta = useMemo(() => {
@@ -157,12 +160,12 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
 
   // Layout responsive: en móvil la etiqueta va encima de la barra.
   const movil = ancho < 620
-  const altoFila = movil ? 50 : 34
+  const altoFila = movil ? 54 : 40
   const margen = 6
   const altoGrafica = Math.max(items.length * altoFila + margen * 2, 96)
   // Ancho reservado a la derecha para el valor, el porcentaje y la variación.
-  const anchoDerecha = movil ? 122 : 176
-  const anchoEtiqueta = movil ? 0 : Math.min(260, Math.max(150, Math.round(ancho * 0.32)))
+  const anchoDerecha = movil ? 150 : 230
+  const anchoEtiqueta = movil ? 0 : Math.min(300, Math.max(170, Math.round(ancho * 0.28)))
   const xBarra = movil ? 0 : anchoEtiqueta + 10
   const xBarraFin = Math.max(xBarra + 40, ancho - anchoDerecha)
   const anchoBarraUtil = xBarraFin - xBarra
@@ -252,7 +255,7 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
         <p className="flex h-40 items-center justify-center text-sm text-slate-500">Sin consumo en este periodo.</p>
       ) : (
         <>
-          <div ref={contenedorRef} className="relative">
+          <div ref={setNodoContenedor} className="relative">
             <svg role="img" aria-label={ariaLabel} viewBox={`0 0 ${ancho} ${altoGrafica}`} className="block w-full">
               {items.map((item, indice) => {
                 const y = margen + indice * altoFila
@@ -267,15 +270,15 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
                 const textoValor = formatearValor(item.valor)
 
                 // Geometría de la barra y de los textos según el ancho.
-                const barAlto = movil ? 14 : 18
+                const barAlto = movil ? 16 : 22
                 const barY = movil ? y + 26 : y + (altoFila - barAlto) / 2
                 const centroY = barY + barAlto / 2
                 const barFin = xBarra + anchoBarra
-                const fuenteValor = movil ? 10 : 11
+                const fuenteValor = movil ? 12 : 14
                 const xValor = barFin + 8
                 const xPorcentaje = xValor + anchoTexto(textoValor, fuenteValor) + 6
-                const xVariacion = xPorcentaje + anchoTexto(porcentaje, 10) + 6
-                const yTextoValor = movil ? barY + barAlto + 12 : centroY + 4
+                const xVariacion = xPorcentaje + anchoTexto(porcentaje, 12) + 6
+                const yTextoValor = movil ? barY + barAlto + 13 : centroY + 5
                 const alternar = () => onSeleccionar?.(item)
 
                 return (
@@ -303,14 +306,14 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
                     ) : null}
 
                     {movil ? (
-                      <text x={2} y={y + 14} fill="currentColor" className="text-slate-400" fontSize={12} dominantBaseline="middle">
+                      <text x={2} y={y + 14} fill="currentColor" className="text-slate-400" fontSize={13} dominantBaseline="middle">
                         <title>{etiquetaProducto}</title>
                         {truncarTexto(etiquetaProducto, ancho - 4, 12)}
                       </text>
                     ) : (
-                      <text x={2} y={centroY + 4} fill="currentColor" className="text-slate-400" fontSize={12}>
+                      <text x={2} y={centroY + 4} fill="currentColor" className="text-slate-400" fontSize={13}>
                         <title>{etiquetaProducto}</title>
-                        {truncarTexto(etiquetaProducto, anchoEtiqueta - 6, 12)}
+                        {truncarTexto(etiquetaProducto, anchoEtiqueta - 6, 13)}
                       </text>
                     )}
 
@@ -319,7 +322,7 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
                     <text x={xValor} y={yTextoValor} fill="currentColor" className="text-slate-200" fontSize={fuenteValor} fontWeight={600}>
                       {textoValor}
                     </text>
-                    <text x={xPorcentaje} y={yTextoValor} fill="currentColor" className="text-slate-500" fontSize={10}>
+                    <text x={xPorcentaje} y={yTextoValor} fill="currentColor" className="text-slate-500" fontSize={12}>
                       {porcentaje}
                     </text>
                     <text
@@ -327,7 +330,7 @@ export default function RankingConsumo({ estados = '', mecanicoId = '', familia 
                       y={yTextoValor}
                       fill={variacion.color || 'currentColor'}
                       className={variacion.color ? undefined : 'text-slate-500'}
-                      fontSize={10}
+                      fontSize={12}
                     >
                       <title>{variacion.titulo}</title>
                       {variacion.texto}
