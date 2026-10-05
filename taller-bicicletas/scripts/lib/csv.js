@@ -15,12 +15,11 @@ function contarComillas(texto) {
   return total
 }
 
-// Lee un fichero y devuelve sus líneas lógicas (sin BOM).
+// Devuelve las líneas lógicas de un CSV que ya está en memoria (sin BOM).
 // Un campo entrecomillado puede contener saltos de línea físicos: si al acumular
 // líneas el número de comillas es impar seguimos uniendo; las líneas físicas se
 // unen con un espacio.
-export function leerLineasCsv(ruta) {
-  const contenido = fs.readFileSync(ruta, 'utf8')
+export function leerLineasCsvTexto(contenido) {
   // Elimina el BOM inicial si existe.
   const sinBom = contenido.charCodeAt(0) === 0xfeff ? contenido.slice(1) : contenido
   const fisicas = sinBom.split(/\r?\n/)
@@ -38,6 +37,11 @@ export function leerLineasCsv(ruta) {
   // Si el fichero acaba dentro de unas comillas, no perdemos el último contenido.
   if (acumulada !== null) lineas.push(acumulada)
   return lineas
+}
+
+// Lee un fichero y devuelve sus líneas lógicas (sin BOM).
+export function leerLineasCsv(ruta) {
+  return leerLineasCsvTexto(fs.readFileSync(ruta, 'utf8'))
 }
 
 // Divide una línea en sus campos (separador ';', campos entrecomillados con "").

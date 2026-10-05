@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { dividirCampos, leerLineasCsv } from './csv.js'
+import { dividirCampos, leerLineasCsv, leerLineasCsvTexto } from './csv.js'
 
 // Pruebas del lector CSV: separador ';' con campos entrecomillados (RFC 4180).
 
@@ -59,4 +59,19 @@ test('leerLineasCsv une líneas físicas mientras haya comillas abiertas', () =>
   } finally {
     fs.rmSync(ruta, { force: true })
   }
+})
+
+test('leerLineasCsvTexto quita el BOM y une las comillas multilínea', () => {
+  // Mismo contenido que el test de fichero, pero pasado como texto con BOM.
+  const texto = '\uFEFFa;"linea1\r\nlinea2";c\r\nd;e;f'
+  const lineas = leerLineasCsvTexto(texto)
+  assert.equal(lineas.length, 2)
+  assert.deepEqual(dividirCampos(lineas[0]), ['a', 'linea1 linea2', 'c'])
+  assert.deepEqual(dividirCampos(lineas[1]), ['d', 'e', 'f'])
+})
+
+test('leerLineasCsvTexto conserva un último campo entrecomillado sin cerrar', () => {
+  const lineas = leerLineasCsvTexto('a;b;c\r\nd;"sin cerrar')
+  assert.equal(lineas.length, 2)
+  assert.equal(lineas[1], 'd;"sin cerrar')
 })
