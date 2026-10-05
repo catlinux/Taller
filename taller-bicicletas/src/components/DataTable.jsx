@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useFilasPorPagina, VALORES_FILAS_POR_PAGINA } from '../lib/ajustes.js'
+import { debeMostrarBarraEspejo } from '../lib/dataTableScroll.js'
 import {
   IconFlechaArriba,
   IconFlechaAbajo,
@@ -167,6 +168,14 @@ export default function DataTable({
   const [pagina, setPagina] = useState(1)
   // Burbuja de ayuda de las cabeceras (posición fija mediante portal).
   const [tooltip, setTooltip] = useState(null)
+  // Barra de desplazamiento horizontal «espejo»: refs del contenedor de la tabla,
+  // de la <table> y de la propia barra, más su visibilidad y el ancho del espaciador.
+  const contenedorRef = useRef(null)
+  const tablaRef = useRef(null)
+  const espejoRef = useRef(null)
+  const sincronizandoRef = useRef(false)
+  const [mostrarBarraEspejo, setMostrarBarraEspejo] = useState(false)
+  const [anchoBarraEspejo, setAnchoBarraEspejo] = useState(0)
 
   // Vuelve a la página 1 cuando cambia la clave de reinicio (búsqueda/filtros).
   useEffect(() => {
@@ -198,6 +207,34 @@ export default function DataTable({
     [columnas, tieneAcciones, anchoAcciones, tieneSeleccion],
   )
 
+  // La barra espejo se muestra solo si la tabla desborda a lo ancho. Se mide con
+  // ResizeObserver sobre el contenedor y la tabla, y se recalcula al cambiar
+  // columnas/filas; si no hay ResizeObserver, se cae al resize de la ventana.
+  useEffect(() => {
+    if (scrollInterno) {
+      setMostrarBarraEspejo(false)
+      return undefined
+    }
+    const contenedor = contenedorRef.current
+    if (!contenedor) return undefined
+    const medir = () => {
+      const nodo = contenedorRef.current
+      if (!nodo) return
+      const necesita = debeMostrarBarraEspejo({ scrollWidth: nodo.scrollWidth, clientWidth: nodo.clientWidth })
+      setMostrarBarraEspejo(necesita)
+      if (necesita) setAnchoBarraEspejo(nodo.scrollWidth)
+    }
+    medir()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', medir)
+      return () => window.removeEventListener('resize', medir)
+    }
+    const observador = new ResizeObserver(medir)
+    observador.observe(contenedor)
+    if (tablaRef.current) observador.observe(tablaRef.current)
+    return () => observador.disconnect()
+  }, [scrollInterno, anchoMinimo, filasPorPagina, pagina])
+
   // Muestra la burbuja de ayuda de una cabecera encima de ella.
   function mostrarTooltip(event, texto) {
     if (!texto) return
@@ -222,13 +259,43 @@ export default function DataTable({
     setPagina(1)
   }
 
+  // Copia el scroll horizontal de un elemento a otro; si ya coinciden no hace nada.
+  function sincronizarScroll(origen, destino) {
+    if (!origen || !destino || origen.scrollLeft === destino.scrollLeft) return
+    sincronizandoRef.current = true
+    destino.scrollLeft = origen.scrollLeft
+  }
+
+  // El indicador ignora el evento de scroll que genera el propio ajuste, para no
+  // entrar en un bucle contenedor ↔ barra espejo.
+  function alDesplazarContenedor() {
+    if (sincronizandoRef.current) {
+      sincronizandoRef.current = false
+      return
+    }
+    sincronizarScroll(contenedorRef.current, espejoRef.current)
+  }
+
+  function alDesplazarEspejo() {
+    if (sincronizandoRef.current) {
+      sincronizandoRef.current = false
+      return
+    }
+    sincronizarScroll(espejoRef.current, contenedorRef.current)
+  }
+
   const desde = totalFilas === 0 ? 0 : (paginaActual - 1) * filasPorPagina + 1
   const hasta = Math.min(paginaActual * filasPorPagina, totalFilas)
 
   return (
-    <div className="card overflow-hidden">
-      <div className={scrollInterno ? 'max-h-[calc(100vh-18rem)] overflow-auto' : 'overflow-x-auto'}>
+    <div className="card overflow-clip">
+      <div
+        ref={contenedorRef}
+        onScroll={scrollInterno ? undefined : alDesplazarContenedor}
+        className={`${scrollInterno ? 'max-h-[calc(100vh-18rem)] overflow-auto' : 'overflow-x-auto'} ${!scrollInterno && mostrarBarraEspejo ? '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : ''}`}
+      >
         <table
+          ref={tablaRef}
           className="w-full table-fixed text-left text-sm"
           style={{ minWidth: `${anchoMinimo}px` }}
         >
@@ -364,6 +431,20 @@ export default function DataTable({
         </table>
       </div>
 
+      {/* Barra espejo de scroll horizontal: pegada al borde inferior de la ventana
+          mientras la tabla se extiende por debajo, para mover el scroll horizontal
+          sin bajar hasta el final. Solo en modo sin scrollInterno. */}
+      {!scrollInterno && mostrarBarraEspejo && (
+        <div
+          ref={espejoRef}
+          aria-hidden="true"
+          tabIndex={-1}
+          onScroll={alDesplazarEspejo}
+          className="sticky bottom-0 z-20 overflow-x-auto bg-antracita-800"
+        >
+          <div style={{ width: `${Math.max(1, anchoBarraEspejo)}px`, height: '1px' }} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 border-t border-antracita-700 px-4 py-3 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
         <span>Mostrando {desde}–{hasta} de {totalFilas} {etiquetaPlural}</span>
