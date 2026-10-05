@@ -103,7 +103,8 @@ export function semanaIso(fecha) {
   return { anio: jueves.getFullYear(), semana }
 }
 
-// Clave de periodo de una fecha según la agrupación ('dia'|'semana'|'mes'|'anio').
+// Clave de periodo de una fecha según la agrupación
+// ('dia'|'semana'|'mes'|'trimestre'|'anio'). El trimestre es natural (T1 ene-mar…).
 export function clavePeriodo(fecha, agrupar) {
   if (agrupar === 'dia') return `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-${dosDigitos(fecha.getDate())}`
   if (agrupar === 'semana') {
@@ -111,6 +112,7 @@ export function clavePeriodo(fecha, agrupar) {
     return `${anio}-S${dosDigitos(semana)}`
   }
   if (agrupar === 'mes') return `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}`
+  if (agrupar === 'trimestre') return `${fecha.getFullYear()}-T${Math.floor(fecha.getMonth() / 3) + 1}`
   if (agrupar === 'anio') return String(fecha.getFullYear())
   return null
 }
@@ -124,6 +126,7 @@ export function etiquetaPeriodo(fecha, agrupar) {
     return `S${semana} · ${dosDigitos(lunes.getDate())}/${dosDigitos(lunes.getMonth() + 1)}`
   }
   if (agrupar === 'mes') return `${MESES_CORTOS[fecha.getMonth()]} ${fecha.getFullYear()}`
+  if (agrupar === 'trimestre') return `T${Math.floor(fecha.getMonth() / 3) + 1} ${fecha.getFullYear()}`
   if (agrupar === 'anio') return String(fecha.getFullYear())
   return null
 }

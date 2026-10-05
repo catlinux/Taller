@@ -15,8 +15,8 @@ function claves(serie) {
 }
 
 test('las agrupaciones y los periodos por defecto son los esperados', () => {
-  assert.deepEqual(AGRUPACIONES_SERIE, ['semana', 'mes', 'anio'])
-  assert.deepEqual(PERIODOS_POR_DEFECTO, { semana: 12, mes: 12, anio: 5 })
+  assert.deepEqual(AGRUPACIONES_SERIE, ['semana', 'mes', 'trimestre', 'anio'])
+  assert.deepEqual(PERIODOS_POR_DEFECTO, { semana: 12, mes: 12, trimestre: 8, anio: 5 })
 })
 
 test('lanza si la agrupación o el número de periodos no son válidos', () => {
@@ -42,7 +42,7 @@ test('serie mensual continua con ceros en los meses sin consumo', () => {
   assert.deepEqual(serie.puntos.map((p) => p.importe), [0, 20, 0, 12])
   assert.equal(serie.desde, '2025-12-01')
   assert.equal(serie.hasta, '2026-03-31')
-  assert.deepEqual(serie.totales, { cantidad: 8, importe: 32, ordenes: 2 })
+  assert.deepEqual(serie.totales, { cantidad: 8, importe: 32, ordenes: 2, articulos: 0 })
 })
 
 test('las etiquetas de mes son legibles en español', () => {
@@ -74,7 +74,7 @@ test('sin datos, todos los periodos quedan a cero', () => {
   const serie = serieConsumo([], { agrupar: 'mes', periodos: 5, hoy: new Date(2026, 9, 10) })
   assert.equal(serie.puntos.length, 5)
   assert.ok(serie.puntos.every((punto) => punto.cantidad === 0 && punto.importe === 0 && punto.ordenes === 0))
-  assert.deepEqual(serie.totales, { cantidad: 0, importe: 0, ordenes: 0 })
+  assert.deepEqual(serie.totales, { cantidad: 0, importe: 0, ordenes: 0, articulos: 0 })
 })
 
 test('las líneas fuera del rango se ignoran', () => {
@@ -141,7 +141,7 @@ test('serie por años naturales', () => {
   assert.deepEqual(serie.puntos.map((p) => p.cantidad), [0, 4, 0])
   assert.equal(serie.desde, '2024-01-01')
   assert.equal(serie.hasta, '2026-12-31')
-  assert.deepEqual(serie.totales, { cantidad: 4, importe: 8, ordenes: 1 })
+  assert.deepEqual(serie.totales, { cantidad: 4, importe: 8, ordenes: 1, articulos: 0 })
 })
 
 test('las fechas inválidas se ignoran sin romper la serie', () => {
@@ -150,4 +150,48 @@ test('las fechas inválidas se ignoran sin romper la serie', () => {
     { agrupar: 'mes', periodos: 1, hoy: new Date(2026, 9, 15) },
   )
   assert.equal(serie.puntos[0].cantidad, 2)
+})
+
+test('serie por trimestres naturales con ceros en los vacíos y cruce de año', () => {
+  const serie = serieConsumo(
+    [
+      linea({ fecha: new Date(2025, 4, 10), cantidad: 2, ordenId: 1 }),
+      linea({ fecha: new Date(2026, 1, 20), cantidad: 5, ordenId: 2 }),
+    ],
+    { agrupar: 'trimestre', periodos: 4, hoy: new Date(2026, 1, 10) },
+  )
+  assert.deepEqual(claves(serie), ['2025-T2', '2025-T3', '2025-T4', '2026-T1'])
+  assert.deepEqual(serie.puntos.map((p) => p.cantidad), [2, 0, 0, 5])
+  assert.deepEqual(serie.puntos.map((p) => p.etiqueta), ['T2 2025', 'T3 2025', 'T4 2025', 'T1 2026'])
+  assert.equal(serie.desde, '2025-04-01')
+  assert.equal(serie.hasta, '2026-03-31')
+  assert.deepEqual(serie.totales, { cantidad: 7, importe: 20, ordenes: 2, articulos: 0 })
+})
+
+test('hoy en el primer y el último día del trimestre da el mismo trimestre', () => {
+  const primero = serieConsumo([], { agrupar: 'trimestre', periodos: 1, hoy: new Date(2026, 3, 1) })
+  const ultimo = serieConsumo([], { agrupar: 'trimestre', periodos: 1, hoy: new Date(2026, 5, 30) })
+  assert.equal(primero.puntos[0].clave, '2026-T2')
+  assert.equal(ultimo.puntos[0].clave, '2026-T2')
+  assert.equal(primero.puntos[0].desde, '2026-04-01')
+  assert.equal(primero.puntos[0].hasta, '2026-06-30')
+  assert.deepEqual(ultimo.puntos[0], primero.puntos[0])
+})
+
+test('cuenta los artículos distintos por referencia (0 si no viene el campo)', () => {
+  const conRefs = serieConsumo(
+    [
+      linea({ referencia: 'A', fecha: new Date(2026, 9, 2), ordenId: 1 }),
+      linea({ referencia: 'B', fecha: new Date(2026, 9, 3), ordenId: 2 }),
+      linea({ referencia: 'A', fecha: new Date(2026, 8, 10), ordenId: 3 }),
+    ],
+    { agrupar: 'mes', periodos: 2, hoy: new Date(2026, 9, 15) },
+  )
+  assert.equal(conRefs.puntos[0].articulos, 1)
+  assert.equal(conRefs.puntos[1].articulos, 2)
+  assert.equal(conRefs.totales.articulos, 2)
+
+  const sinRefs = serieConsumo([linea({ fecha: new Date(2026, 9, 2) })], { agrupar: 'mes', periodos: 2, hoy: new Date(2026, 9, 15) })
+  assert.equal(sinRefs.totales.articulos, 0)
+  assert.equal(sinRefs.puntos[1].articulos, 0)
 })

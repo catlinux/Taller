@@ -12,10 +12,10 @@ import {
 // ISO que empieza en lunes, meses y años naturales, todo en hora local).
 
 // Agrupaciones admitidas por la serie (no hay desglose por día ni «sin desglose»).
-export const AGRUPACIONES_SERIE = ['semana', 'mes', 'anio']
+export const AGRUPACIONES_SERIE = ['semana', 'mes', 'trimestre', 'anio']
 
 // Número de periodos por defecto de la serie según la agrupación.
-export const PERIODOS_POR_DEFECTO = { semana: 12, mes: 12, anio: 5 }
+export const PERIODOS_POR_DEFECTO = { semana: 12, mes: 12, trimestre: 8, anio: 5 }
 
 // Dos dígitos con cero a la izquierda.
 function dosDigitos(valor) {
@@ -27,17 +27,21 @@ function aIso(fecha) {
   return `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-${dosDigitos(fecha.getDate())}`
 }
 
-// Primer día del periodo (lunes de la semana, día 1 del mes, 1 de enero).
+// Primer día del periodo (lunes de la semana, día 1 del mes, primer día del
+// trimestre natural, 1 de enero).
 function inicioDePeriodo(fecha, agrupar) {
   if (agrupar === 'semana') return lunesDeSemana(fecha)
   if (agrupar === 'mes') return new Date(fecha.getFullYear(), fecha.getMonth(), 1)
+  if (agrupar === 'trimestre') return new Date(fecha.getFullYear(), Math.floor(fecha.getMonth() / 3) * 3, 1)
   return new Date(fecha.getFullYear(), 0, 1)
 }
 
-// Último día del periodo (domingo de la semana, último día del mes, 31 de diciembre).
+// Último día del periodo (domingo de la semana, último día del mes, último día
+// del trimestre, 31 de diciembre).
 function finDePeriodo(inicio, agrupar) {
   if (agrupar === 'semana') return new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 6)
   if (agrupar === 'mes') return new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0)
+  if (agrupar === 'trimestre') return new Date(inicio.getFullYear(), inicio.getMonth() + 3, 0)
   return new Date(inicio.getFullYear(), 11, 31)
 }
 
@@ -45,18 +49,21 @@ function finDePeriodo(inicio, agrupar) {
 function inicioAnterior(inicio, agrupar) {
   if (agrupar === 'semana') return new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() - 7)
   if (agrupar === 'mes') return new Date(inicio.getFullYear(), inicio.getMonth() - 1, 1)
+  if (agrupar === 'trimestre') return new Date(inicio.getFullYear(), inicio.getMonth() - 3, 1)
   return new Date(inicio.getFullYear() - 1, 0, 1)
 }
 
 // Serie continua de los últimos `periodos` periodos que terminan en el periodo de
 // `hoy` (incluido), con ceros en los periodos sin consumo.
-//   - lineas: { cantidad, precioNeto, fecha (Date o ISO), ordenId }
-//   - opciones: { agrupar: 'semana'|'mes'|'anio', periodos: entero 1-120, hoy }
+//   - lineas: { cantidad, precioNeto, fecha (Date o ISO), ordenId, referencia? }
+//   - opciones: { agrupar: 'semana'|'mes'|'trimestre'|'anio', periodos: entero 1-120, hoy }
 // Devuelve { agrupar, desde, hasta, puntos, totales } con las fechas en 'AAAA-MM-DD'.
+// Cada punto y el total incluyen `articulos` = número de referencias distintas
+// con consumo (0 si las líneas no traen `referencia`).
 export function serieConsumo(lineas = [], opciones = {}) {
   const agrupar = opciones.agrupar
   if (!AGRUPACIONES_SERIE.includes(agrupar)) {
-    throw new Error('agrupar debe ser uno de: semana, mes, anio')
+    throw new Error('agrupar debe ser uno de: semana, mes, trimestre, anio')
   }
   const periodos = opciones.periodos
   if (!Number.isInteger(periodos) || periodos < 1 || periodos > 120) {
@@ -84,12 +91,14 @@ export function serieConsumo(lineas = [], opciones = {}) {
       cantidad: 0,
       importe: 0,
       ordenes: 0,
+      articulos: 0,
     }
-    porClave.set(punto.clave, { punto, ordenes: new Set() })
+    porClave.set(punto.clave, { punto, ordenes: new Set(), referencias: new Set() })
     return punto
   })
 
   const ordenesGlobal = new Set()
+  const referenciasGlobal = new Set()
   let cantidadTotal = 0
   let importeTotal = 0
 
@@ -108,14 +117,21 @@ export function serieConsumo(lineas = [], opciones = {}) {
       entrada.ordenes.add(linea.ordenId)
       ordenesGlobal.add(linea.ordenId)
     }
+    // Solo cuenta artículos distintos si la línea trae referencia (modo «todos»).
+    if (linea.referencia !== null && linea.referencia !== undefined && linea.referencia !== '') {
+      const referencia = String(linea.referencia)
+      entrada.referencias.add(referencia)
+      referenciasGlobal.add(referencia)
+    }
     cantidadTotal += cantidad
     importeTotal += importe
   }
 
-  for (const { punto, ordenes } of porClave.values()) {
+  for (const { punto, ordenes, referencias } of porClave.values()) {
     punto.cantidad = redondear4(punto.cantidad)
     punto.importe = redondear4(punto.importe)
     punto.ordenes = ordenes.size
+    punto.articulos = referencias.size
   }
 
   return {
@@ -127,6 +143,7 @@ export function serieConsumo(lineas = [], opciones = {}) {
       cantidad: redondear4(cantidadTotal),
       importe: redondear4(importeTotal),
       ordenes: ordenesGlobal.size,
+      articulos: referenciasGlobal.size,
     },
   }
 }

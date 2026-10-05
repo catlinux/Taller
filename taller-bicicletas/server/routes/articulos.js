@@ -308,23 +308,22 @@ router.get('/consumo', async (req, res, next) => {
 })
 
 // GET /:id -> artículo concreto
-// GET /consumo-serie -> serie continua de consumo de un artículo por periodo
-// (semanas, meses o años) para la gráfica de «Artículos > Consumo». Reutiliza
-// los mismos filtros de estados y mecánico que /consumo. Debe declararse ANTES
-// de '/:id' para que no la capture la ruta con parámetro.
+// GET /consumo-serie -> serie continua de consumo por periodo (semanas, meses,
+// trimestres o años) para la gráfica de «Artículos > Consumo». Con `referencia`
+// se limita a un artículo; sin ella se suman TODOS los productos (modo «todos»).
+// Reutiliza los mismos filtros de estados, mecánico, familia y proveedor que
+// /consumo. Debe declararse ANTES de '/:id' para que no la capture esa ruta.
 router.get('/consumo-serie', async (req, res, next) => {
   try {
+    // Referencia opcional: null => modo «todos los productos».
     const referencia = textoDeQuery(req.query.referencia)
-    if (referencia === null) {
-      return res.status(400).json({ error: 'referencia es obligatoria' })
-    }
 
     const agrupar = textoDeQuery(req.query.agrupar) ?? 'semana'
     if (!AGRUPACIONES_SERIE.includes(agrupar)) {
       return res.status(400).json({ error: `agrupar debe ser uno de: ${AGRUPACIONES_SERIE.join(', ')}` })
     }
 
-    // Periodos: por defecto 12 semanas, 12 meses o 5 años; 1-120 si se indica.
+    // Periodos: por defecto 12 semanas, 12 meses, 8 trimestres o 5 años; 1-120 si se indica.
     let periodos = PERIODOS_POR_DEFECTO[agrupar]
     const periodosTexto = textoDeQuery(req.query.periodos)
     if (periodosTexto !== null) {
@@ -343,12 +342,13 @@ router.get('/consumo-serie', async (req, res, next) => {
     const rango = rangoDeFechas(desde, hasta)
 
     const where = {
-      referencia,
       orden: {
         estado: { in: estados },
         fechaEntrada: { gte: rango.desde, lte: rango.hasta },
       },
     }
+    // En modo un artículo se filtra por su referencia; en modo «todos», no.
+    if (referencia !== null) where.referencia = referencia
 
     if (req.query.mecanicoId !== undefined && String(req.query.mecanicoId).trim() !== '') {
       const mecanicoId = parseId(req.query.mecanicoId)
@@ -358,39 +358,60 @@ router.get('/consumo-serie', async (req, res, next) => {
       where.orden.mecanicoId = mecanicoId
     }
 
+    // Filtros de familia y proveedor, igual que en /consumo.
+    const filtroArticulo = {}
+    const familia = textoDeQuery(req.query.familia)
+    if (familia !== null) filtroArticulo.familia = familia
+    const proveedor = textoDeQuery(req.query.proveedor)
+    if (proveedor !== null) filtroArticulo.proveedor = proveedor
+    if (Object.keys(filtroArticulo).length > 0) where.articulo = filtroArticulo
+
+    // En modo «todos» solo se cargan los campos imprescindibles.
     const lineas = await prisma.ordenMaterial.findMany({
       where,
-      select: {
-        descripcion: true,
-        cantidad: true,
-        precioNeto: true,
-        orden: { select: { id: true, fechaEntrada: true } },
-      },
+      select: referencia !== null
+        ? { descripcion: true, cantidad: true, precioNeto: true, orden: { select: { id: true, fechaEntrada: true } } }
+        : { referencia: true, cantidad: true, precioNeto: true, orden: { select: { id: true, fechaEntrada: true } } },
     })
 
-    const datos = lineas.map((linea) => ({
-      cantidad: linea.cantidad,
-      precioNeto: linea.precioNeto,
-      fecha: linea.orden.fechaEntrada,
-      ordenId: linea.orden.id,
-    }))
+    let datos
+    let descripcion
+    if (referencia !== null) {
+      datos = lineas.map((linea) => ({
+        referencia,
+        cantidad: linea.cantidad,
+        precioNeto: linea.precioNeto,
+        fecha: linea.orden.fechaEntrada,
+        ordenId: linea.orden.id,
+      }))
 
-    // Descripción: la de la línea más reciente o, si no hay líneas, la del catálogo.
-    let masReciente = null
-    for (const linea of lineas) {
-      if (masReciente === null || new Date(linea.orden.fechaEntrada) > new Date(masReciente.orden.fechaEntrada)) {
-        masReciente = linea
+      // Descripción: la de la línea más reciente o, si no hay líneas, la del catálogo.
+      let masReciente = null
+      for (const linea of lineas) {
+        if (masReciente === null || new Date(linea.orden.fechaEntrada) > new Date(masReciente.orden.fechaEntrada)) {
+          masReciente = linea
+        }
       }
-    }
-    let descripcion = masReciente?.descripcion || null
-    if (!descripcion) {
-      const articulo = await prisma.articulo.findFirst({ where: { referencia }, select: { descripcion: true } })
-      descripcion = articulo?.descripcion ?? null
+      descripcion = masReciente?.descripcion || null
+      if (!descripcion) {
+        const articulo = await prisma.articulo.findFirst({ where: { referencia }, select: { descripcion: true } })
+        descripcion = articulo?.descripcion ?? null
+      }
+    } else {
+      // Modo «todos»: cada línea aporta su referencia para contar artículos distintos.
+      datos = lineas.map((linea) => ({
+        referencia: linea.referencia,
+        cantidad: linea.cantidad,
+        precioNeto: linea.precioNeto,
+        fecha: linea.orden.fechaEntrada,
+        ordenId: linea.orden.id,
+      }))
+      descripcion = null
     }
 
     const serie = serieConsumo(datos, { agrupar, periodos })
 
-    return res.json({ referencia, descripcion, ...serie })
+    return res.json({ referencia: referencia ?? null, descripcion, ...serie })
   } catch (error) {
     return next(error)
   }

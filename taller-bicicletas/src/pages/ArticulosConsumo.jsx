@@ -368,6 +368,8 @@ export default function ArticulosConsumo() {
         descripcion={articuloSeleccionado?.descripcion ?? ''}
         estados={filtros.estados}
         mecanicoId={filtros.mecanicoId}
+        familia={filtros.familia}
+        proveedor={filtros.proveedor}
         token={token}
         onQuitar={() => setArticuloSeleccionado(null)}
       />

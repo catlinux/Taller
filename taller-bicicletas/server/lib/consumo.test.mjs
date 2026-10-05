@@ -8,6 +8,7 @@ import {
   resolverEstados,
   rangoDeFechas,
   parseFechaISO,
+  AGRUPACIONES,
   ESTADOS_CONSUMO_POR_DEFECTO,
 } from './consumo.js'
 
@@ -51,6 +52,19 @@ test('la clave y la etiqueta de periodo de año', () => {
   const fecha = new Date(2026, 9, 15)
   assert.equal(clavePeriodo(fecha, 'anio'), '2026')
   assert.equal(etiquetaPeriodo(fecha, 'anio'), '2026')
+})
+
+test('la clave y la etiqueta de periodo de trimestre son naturales (T1-T4)', () => {
+  assert.equal(clavePeriodo(new Date(2026, 0, 15), 'trimestre'), '2026-T1')
+  assert.equal(clavePeriodo(new Date(2026, 2, 31), 'trimestre'), '2026-T1')
+  assert.equal(clavePeriodo(new Date(2026, 3, 1), 'trimestre'), '2026-T2')
+  assert.equal(clavePeriodo(new Date(2026, 8, 30), 'trimestre'), '2026-T3')
+  assert.equal(clavePeriodo(new Date(2026, 11, 31), 'trimestre'), '2026-T4')
+  assert.equal(etiquetaPeriodo(new Date(2026, 5, 10), 'trimestre'), 'T2 2026')
+})
+
+test('la agrupación trimestre no se añade al desglose de la tabla', () => {
+  assert.ok(!AGRUPACIONES.includes('trimestre'))
 })
 
 test('la semana ISO empieza en lunes', () => {
