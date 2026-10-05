@@ -5,7 +5,7 @@
 // bicicletas de un cliente...) queden enlazadas otra vez.
 
 // Campos DateTime del esquema que hay que revivir (ISO -> Date) al restaurar.
-const CAMPOS_FECHA = ['createdAt', 'updatedAt', 'fechaEntrada', 'fechaPrevista', 'sinStockDesde']
+const CAMPOS_FECHA = ['createdAt', 'updatedAt', 'fechaEntrada', 'fechaPrevista', 'fechaFinalizacion', 'exportadaFactusolEn', 'sinStockDesde']
 
 // Error de negocio: la restauración no es posible (conflicto o falta el padre).
 // Lleva un `status` HTTP para que la ruta responda con un código coherente.

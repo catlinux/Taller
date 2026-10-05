@@ -21,6 +21,10 @@ export const ESTADOS_ORDEN = [
   'Entregada',
 ]
 
+// Estados en los que la orden está terminada: al entrar en ellos se fija la
+// fecha de finalización (solo la primera vez).
+const ESTADOS_FINALIZADOS = ['Finalizada', 'Entregada']
+
 // Tipos de reparación permitidos para una orden
 const TIPOS_REPARACION = ['Preferente', 'Programada', 'Urgente', 'NoProgramada']
 
@@ -80,6 +84,14 @@ function parseFecha(value) {
   if (typeof value !== 'string' || !value.trim()) return null
   const fecha = new Date(value)
   return Number.isNaN(fecha.getTime()) ? null : fecha
+}
+
+// Fija la fecha de finalización la primera vez que la orden pasa a un estado
+// finalizado. Si ya tenía fecha (o vuelve a un estado anterior), se conserva.
+function fijarFechaFinalizacion(datos, ordenExistente = null) {
+  if (!ESTADOS_FINALIZADOS.includes(datos.estado)) return
+  if (ordenExistente?.fechaFinalizacion) return
+  datos.fechaFinalizacion = new Date()
 }
 
 // Genera el siguiente número de orden con formato ORD-YYYY-NNNN para el año actual.
@@ -518,6 +530,9 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error })
     }
 
+    // Si la orden se crea ya en un estado finalizado, se anota la fecha.
+    fijarFechaFinalizacion(datos)
+
     const cliente = await prisma.cliente.findUnique({ where: { id: datos.clienteId } })
     if (!cliente) {
       return res.status(404).json({ error: 'El cliente indicado no existe' })
@@ -609,6 +624,9 @@ router.put('/:id', async (req, res, next) => {
     if (Object.keys(datos).length === 0) {
       return res.status(400).json({ error: 'No se han proporcionado campos para actualizar' })
     }
+
+    // Al pasar por primera vez a Finalizada o Entregada, se anota la fecha.
+    fijarFechaFinalizacion(datos, existente)
 
     const clienteIdFinal = datos.clienteId !== undefined ? datos.clienteId : existente.clienteId
     if (datos.clienteId !== undefined) {

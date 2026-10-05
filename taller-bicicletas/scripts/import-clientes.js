@@ -38,6 +38,8 @@ function clasificarCliente(campos) {
   return {
     cliente: {
       numeroCliente: Number(codigo),
+      // Los clientes del listado del ERP son de Factusol: su código coincide con el nº de cliente.
+      codigoFactusol: Number(codigo),
       nombre,
       apellidos: null,
       direccion: textoONull(campos[2]),

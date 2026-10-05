@@ -34,6 +34,19 @@ function normalizarTexto(value) {
   return limpio === '' ? null : limpio
 }
 
+// Valida el código de cliente en Factusol: nulo o vacío => null; si no, un entero
+// entre 1 y 99999 (Factusol usa un numérico de 5 cifras). Devuelve undefined si no
+// es válido (para poder responder con un error 400).
+function parsearCodigoFactusol(value) {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined
+  const codigo = typeof value === 'string' ? value.trim() : value
+  if (codigo === '') return null
+  const numero = Number(codigo)
+  if (!Number.isInteger(numero) || numero < 1 || numero > 99999) return undefined
+  return numero
+}
+
 // Valida y construye los datos de un cliente a partir del cuerpo de la petición.
 // Con `parcial: true` solo se tienen en cuenta los campos presentes (actualización).
 function construirDatosCliente(body, { parcial = false } = {}) {
@@ -52,6 +65,14 @@ function construirDatosCliente(body, { parcial = false } = {}) {
       return { error: 'El número de cliente debe ser un entero positivo' }
     }
     datos.numeroCliente = numeroCliente
+  }
+
+  if (body.codigoFactusol !== undefined) {
+    const codigoFactusol = parsearCodigoFactusol(body.codigoFactusol)
+    if (codigoFactusol === undefined) {
+      return { error: 'El código de Factusol debe ser un número entero entre 1 y 99999' }
+    }
+    datos.codigoFactusol = codigoFactusol
   }
 
   for (const campo of CAMPOS_TEXTO_OPCIONALES) {

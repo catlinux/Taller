@@ -72,6 +72,7 @@ model Ajuste {
 model Cliente {
   id            Int         @id @default(autoincrement())
   numeroCliente Int         @unique
+  codigoFactusol Int?       // Código del cliente en Factusol (5 cifras); en los importados coincide con numeroCliente
   nombre        String
   apellidos     String?
   dni           String?
@@ -153,6 +154,7 @@ model OrdenReparacion {
   bicicletaId       Int?
   fechaEntrada      DateTime  @default(now())
   fechaPrevista     DateTime?
+  fechaFinalizacion DateTime? // Se fija (la primera vez) al pasar a estado Finalizada o Entregada
   estado            String    @default("Presupuesto") // Presupuesto, Pendiente, EnReparacion, EsperandoMaterial, Finalizada, Entregada
   descripcion       String?   // Trabajos realizados
   diagnostico       String?
@@ -175,6 +177,10 @@ model OrdenReparacion {
   baseImponible     Float    @default(0)
   iva               Float    @default(0)
   total             Float    @default(0)
+
+  // Factusol (exportación a la contabilidad)
+  exportadaFactusolEn DateTime? // Cuándo se exportó la orden a Factusol
+  albaranFactusol     String?   // Referencia del albarán creado en Factusol
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
