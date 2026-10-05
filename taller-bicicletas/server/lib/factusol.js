@@ -295,6 +295,17 @@ export function normalizarConfig(entrada) {
     return { error: 'Los tipos de IVA deben ser una lista de 3 números' }
   }
 
+  // Cliente genérico (cliente de contado): null, vacío o entero entre 0 y 99999.
+  let clienteGenerico = datos.clienteGenerico
+  if (clienteGenerico === undefined || clienteGenerico === null || clienteGenerico === '') {
+    clienteGenerico = null
+  } else {
+    clienteGenerico = Number(clienteGenerico)
+    if (!Number.isInteger(clienteGenerico) || clienteGenerico < 0 || clienteGenerico > 99999) {
+      return { error: 'El cliente genérico debe ser un número entero entre 0 y 99999' }
+    }
+  }
+
   return {
     config: {
       serie,
@@ -302,6 +313,7 @@ export function normalizarConfig(entrada) {
       formaPago: textoConfig(datos.formaPago, 3, null),
       articuloManoObra: textoConfig(datos.articuloManoObra, 13, ''),
       tiposIva: tiposIva.map((t) => Number(t)),
+      clienteGenerico,
     },
   }
 }
@@ -347,6 +359,17 @@ function nombreCliente(cliente) {
   return juntarTexto([cliente.nombre, cliente.apellidos], 50)
 }
 
+// true si la orden es de un cliente sin código de Factusol.
+function clienteSinCodigo(orden) {
+  const cliente = orden.cliente
+  return !cliente || cliente.codigoFactusol === null || cliente.codigoFactusol === undefined
+}
+
+// true si hay un cliente genérico configurado (ojo: el código 0 es válido).
+function hayClienteGenerico(config) {
+  return config.clienteGenerico !== null && config.clienteGenerico !== undefined
+}
+
 // Construye la fila de ALB.xlsx (112 posiciones) de un albarán.
 function construirFilaAlb(orden, config, calculo, albaran, ahora) {
   const fila = new Array(NUM_COLUMNAS_ALB).fill(null)
@@ -359,9 +382,8 @@ function construirFilaAlb(orden, config, calculo, albaran, ahora) {
   fila[ALB.D] = fechaExcel(fechaAlbaran(orden))
   fila[ALB.E] = 0
   fila[ALB.F] = limpiarTexto(config.almacen, 3)
-  fila[ALB.I] = cliente.codigoFactusol === null || cliente.codigoFactusol === undefined
-    ? null
-    : cliente.codigoFactusol
+  // Código de cliente: el suyo o, si no lo tiene, el cliente genérico (contado).
+  fila[ALB.I] = clienteSinCodigo(orden) ? config.clienteGenerico : cliente.codigoFactusol
   fila[ALB.J] = nombreCliente(cliente)
   fila[ALB.K] = limpiarTexto(cliente.direccion, 100)
   fila[ALB.L] = limpiarTexto(cliente.poblacion, 30)
@@ -498,6 +520,11 @@ function calcularOrden(orden, config, albaran, ahora) {
     )
   }
 
+  // Cliente sin código: se avisa de que se exporta con el cliente genérico.
+  if (clienteSinCodigo(orden) && hayClienteGenerico(config)) {
+    avisos.push(`Sin código de Factusol: se exporta con el cliente genérico ${config.clienteGenerico}`)
+  }
+
   const filaAlb = construirFilaAlb(orden, config, {
     descuentoGlobal,
     netos,
@@ -521,8 +548,8 @@ function motivosBloqueo(orden, config, albaran, incluirExportadas) {
     motivos.push('La orden no está finalizada ni entregada')
   }
 
-  const cliente = orden.cliente
-  if (!cliente || cliente.codigoFactusol === null || cliente.codigoFactusol === undefined) {
+  // Un cliente sin código se bloquea solo si no hay cliente genérico configurado.
+  if (clienteSinCodigo(orden) && !hayClienteGenerico(config)) {
     motivos.push('El cliente no tiene código de Factusol')
   }
 
@@ -585,6 +612,9 @@ function completarConfig(config) {
     tiposIva: Array.isArray(datos.tiposIva) && datos.tiposIva.length === 3
       ? datos.tiposIva
       : [21, 10, 4],
+    clienteGenerico: datos.clienteGenerico === undefined || datos.clienteGenerico === null
+      ? null
+      : datos.clienteGenerico,
   }
 }
 
@@ -628,6 +658,7 @@ export function prepararExportacion(ordenes, config, { incluirExportadas = false
       albaran,
       total: calculo.total,
       avisos: calculo.avisos,
+      clienteGenerico: clienteSinCodigo(orden) && hayClienteGenerico(cfg),
     })
   }
 

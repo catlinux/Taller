@@ -26,6 +26,7 @@ const CONFIG_DEFECTO = {
   formaPago: '',
   articuloManoObra: '',
   tiposIva: [21, 10, 4],
+  clienteGenerico: null,
 }
 
 // Estados de orden que se pueden facturar (el resto no se exporta).

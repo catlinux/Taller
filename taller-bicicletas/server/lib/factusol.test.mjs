@@ -138,6 +138,20 @@ test('normalizarConfig recorta los textos y valida los tipos de IVA', () => {
   assert.deepEqual(normalizarConfig({ serie: 1, tiposIva: [16, 8, 0] }).config.tiposIva, [16, 8, 0])
 })
 
+test('normalizarConfig valida el cliente genérico (entero 0-99999 o vacío)', () => {
+  const error = 'El cliente genérico debe ser un número entero entre 0 y 99999'
+  assert.equal(normalizarConfig({ serie: 1 }).config.clienteGenerico, null)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: null }).config.clienteGenerico, null)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: '' }).config.clienteGenerico, null)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: 0 }).config.clienteGenerico, 0)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: 1 }).config.clienteGenerico, 1)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: 99999 }).config.clienteGenerico, 99999)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: 100000 }).error, error)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: -1 }).error, error)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: 2.5 }).error, error)
+  assert.equal(normalizarConfig({ serie: 1, clienteGenerico: 'abc' }).error, error)
+})
+
 test('numeroAlbaran convierte los números de orden válidos', () => {
   assert.equal(numeroAlbaran('ORD-2026-0012'), '260012')
   assert.equal(numeroAlbaran('ORD-2000-0001'), '000001')
@@ -269,6 +283,31 @@ test('se bloquea una orden cuyo cliente no tiene código de Factusol', () => {
   orden.cliente = { ...orden.cliente, codigoFactusol: null }
   const { bloqueadas } = prepararExportacion([orden], CONFIG, { ahora: AHORA })
   assert.ok(bloqueadas[0].motivos.includes('El cliente no tiene código de Factusol'))
+})
+
+test('con cliente genérico, una orden sin código se exporta con él y los datos reales', () => {
+  const config = normalizarConfig({ serie: 1, clienteGenerico: 0 }).config
+  const orden = ordenEjemplo()
+  orden.cliente = { ...orden.cliente, codigoFactusol: null }
+  const { incluidas, bloqueadas, filasAlb } = prepararExportacion([orden], config, { ahora: AHORA })
+
+  assert.equal(bloqueadas.length, 0)
+  assert.equal(incluidas.length, 1)
+  assert.equal(incluidas[0].clienteGenerico, true)
+  assert.ok(incluidas[0].avisos.some((aviso) => aviso.includes('se exporta con el cliente genérico 0')))
+
+  const fila = filasAlb[0]
+  assert.equal(fila[8], 0) // I código de cliente = cliente genérico
+  assert.equal(fila[9], 'Rompecadenas S.L.') // J nombre real
+  assert.equal(fila[14], 'B12345678') // O N.I.F. real
+})
+
+test('con cliente genérico, una orden con código propio usa el suyo y sin aviso', () => {
+  const config = normalizarConfig({ serie: 1, clienteGenerico: 500 }).config
+  const { incluidas, filasAlb } = prepararExportacion([ordenEjemplo()], config, { ahora: AHORA })
+  assert.equal(incluidas[0].clienteGenerico, false)
+  assert.deepEqual(incluidas[0].avisos, [])
+  assert.equal(filasAlb[0][8], 10110) // I código propio del cliente
 })
 
 test('se bloquea una orden ya exportada, salvo si se incluyen las exportadas', () => {

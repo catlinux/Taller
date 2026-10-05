@@ -8,7 +8,7 @@ import { formatearEuros, formatearFecha } from '../../lib/ordenes.js'
 import { AvisoSoloAdmin } from './comunes.jsx'
 
 // Valores por defecto de la configuración de Factusol (los mismos que el servidor).
-const CONFIG_DEFECTO = { serie: '', almacen: 'GEN', formaPago: '', articuloManoObra: '', tiposIva: ['21', '10', '4'] }
+const CONFIG_DEFECTO = { serie: '', almacen: 'GEN', formaPago: '', articuloManoObra: '', tiposIva: ['21', '10', '4'], clienteGenerico: '' }
 
 // Aviso destacado en naranja (se repite en los dos bloques del panel).
 function AvisoNaranja({ children }) {
@@ -72,6 +72,7 @@ export default function FactusolPanel() {
       formaPago: configServidor.formaPago ?? '',
       articuloManoObra: configServidor.articuloManoObra ?? '',
       tiposIva: Array.isArray(configServidor.tiposIva) ? configServidor.tiposIva.map(String) : ['21', '10', '4'],
+      clienteGenerico: configServidor.clienteGenerico == null ? '' : String(configServidor.clienteGenerico),
     })
   }, [configServidor])
 
@@ -96,6 +97,7 @@ export default function FactusolPanel() {
       formaPago: borrador.formaPago,
       articuloManoObra: borrador.articuloManoObra,
       tiposIva: borrador.tiposIva.map((t) => Number(t)),
+      clienteGenerico: borrador.clienteGenerico === '' ? null : Number(borrador.clienteGenerico),
     }),
     {
       onSuccess: () => {
@@ -310,6 +312,21 @@ export default function FactusolPanel() {
               className="input mt-1.5"
             />
             <span className="mt-1.5 block text-xs text-slate-500">Código en Factusol. Opcional.</span>
+          </label>
+          <label className="block">
+            <span className="label">Cliente genérico (contado)</span>
+            <input
+              type="number"
+              min="0"
+              max="99999"
+              step="1"
+              inputMode="numeric"
+              value={borrador.clienteGenerico}
+              onChange={(event) => actualizar('clienteGenerico', event.target.value)}
+              disabled={!esAdmin}
+              className="input mt-1.5"
+            />
+            <span className="mt-1.5 block text-xs text-slate-500">Código del cliente de contado en Factusol. Las órdenes de clientes sin código de Factusol se exportan con él, con el nombre y los datos reales del cliente en el albarán. Déjalo vacío para que esas órdenes se bloqueen.</span>
           </label>
           {borrador.tiposIva.map((tipo, indice) => (
             <label key={indice} className="block">
