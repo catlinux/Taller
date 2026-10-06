@@ -1,14 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import XLSX from 'xlsx'
 import {
   importarClientes,
   importarArticulos,
   importarBicicletas,
+  importarTrabajos,
   IMPORTACIONES,
 } from './importar.js'
 
 // Pruebas de la importación de clientes, artículos y bicicletas desde el TEXTO
-// de un CSV, con un Prisma falso en memoria (sin base de datos real).
+// de un CSV (y de trabajos desde un .xlsx) con un Prisma falso en memoria (sin
+// base de datos real).
 
 // --- Prisma falso ---------------------------------------------------------
 
@@ -24,17 +27,26 @@ function proyectar(objeto, select) {
 
 // Crea un Prisma de mentira en memoria que solo implementa lo que usan las
 // importaciones. Lleva un contador de escrituras para comprobar el modo simular.
-function crearPrismaFalso({ clientes = [], articulos = [], bicicletas = [] } = {}) {
+function crearPrismaFalso({
+  clientes = [],
+  articulos = [],
+  bicicletas = [],
+  operaciones = [],
+  ajuste = null,
+} = {}) {
   const clientesMap = new Map(clientes.map((c) => [c.numeroCliente, { ...c }]))
   const articulosMap = new Map(articulos.map((a) => [a.referencia, { ...a }]))
   const bicicletasMap = new Map(bicicletas.map((b) => [b.id, { ...b }]))
+  const operacionesMap = new Map(operaciones.map((o) => [o.id, { ...o }]))
   let siguienteIdBicicleta = bicicletas.length + 1
+  let siguienteIdOperacion = operaciones.length + 1
   const llamadas = { upsert: 0, create: 0, update: 0, transaction: 0 }
 
   return {
     clientesMap,
     articulosMap,
     bicicletasMap,
+    operacionesMap,
     llamadas,
     cliente: {
       async findMany({ where, select }) {
@@ -86,6 +98,28 @@ function crearPrismaFalso({ clientes = [], articulos = [], bicicletas = [] } = {
         const bici = { ...bicicletasMap.get(where.id), ...data }
         bicicletasMap.set(where.id, bici)
         return bici
+      },
+    },
+    operacionManoObra: {
+      async findMany({ select } = {}) {
+        return [...operacionesMap.values()].map((operacion) => proyectar(operacion, select))
+      },
+      async create({ data }) {
+        llamadas.create++
+        const operacion = { id: siguienteIdOperacion++, activo: true, ...data }
+        operacionesMap.set(operacion.id, operacion)
+        return operacion
+      },
+      async update({ where, data }) {
+        llamadas.update++
+        const operacion = { ...operacionesMap.get(where.id), ...data }
+        operacionesMap.set(where.id, operacion)
+        return operacion
+      },
+    },
+    ajuste: {
+      async findUnique({ where }) {
+        return ajuste && ajuste.clave === where.clave ? { ...ajuste } : null
       },
     },
     async $transaction(operaciones) {
@@ -271,6 +305,102 @@ test('importarBicicletas con simular no escribe nada', async () => {
   assert.equal(prisma.bicicletasMap.size, 1)
 })
 
+// --- Trabajos (Excel «Tiempos sexagesimales») -----------------------------
+
+// Construye un .xlsx en base64 a partir de una matriz de celdas, con xlsx.
+function excelBase64(filas) {
+  const hoja = XLSX.utils.aoa_to_sheet(filas)
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja, 'Hoja1')
+  return XLSX.write(libro, { type: 'base64', bookType: 'xlsx' })
+}
+
+const FILAS_TRABAJOS = [
+  ['Tiempos sexagesimales'],
+  [],
+  ['Dirección', 'Ajuste', 'Sustitución'],
+  [null, '00:10', '00:20'],
+  [],
+  ['Freno trasero', 'Purgar'],
+  [null, '00:20'],
+  [null, '00:30'],
+]
+
+test('importarTrabajos crea las operaciones nuevas y actualiza las existentes por categoría+descripción', async () => {
+  const prisma = crearPrismaFalso({
+    operaciones: [
+      // Existente con la descripción sin tilde: debe emparejar con «Dirección/Ajuste».
+      { id: 50, codigo: 'DIR-99', categoria: 'Direccion', descripcion: 'Ajuste', tiempoDefecto: 1, precioHoraDefecto: 45, tiempos: null, ordenCatalogo: 9 },
+    ],
+    ajuste: { clave: 'precioHora', valor: '40' },
+  })
+  const resumen = await importarTrabajos(prisma, excelBase64(FILAS_TRABAJOS))
+
+  assert.equal(resumen.tipo, 'trabajos')
+  assert.equal(resumen.leidos, 3)
+  assert.equal(resumen.creados, 2)
+  assert.equal(resumen.actualizados, 1)
+  assert.equal(resumen.categorias, 2)
+  assert.equal(resumen.simulado, false)
+
+  // La existente se actualiza sin tocar el código ni su precio/hora.
+  const existente = prisma.operacionesMap.get(50)
+  assert.equal(existente.codigo, 'DIR-99')
+  assert.equal(existente.precioHoraDefecto, 45)
+  assert.equal(existente.categoria, 'Dirección')
+  assert.equal(existente.tiempos, '[10]')
+  assert.equal(existente.tiempoDefecto, Number((10 / 60).toFixed(4)))
+  assert.equal(existente.ordenCatalogo, 0)
+  assert.equal(existente.activo, true)
+
+  // Las nuevas usan el prefijo de su categoría y el precio/hora del ajuste.
+  const creadas = [...prisma.operacionesMap.values()].filter((o) => o.id !== 50)
+  const sustitucion = creadas.find((o) => o.descripcion === 'Sustitución')
+  assert.equal(sustitucion.codigo, 'DIR-01')
+  assert.equal(sustitucion.categoria, 'Dirección')
+  assert.equal(sustitucion.tiempos, '[20]')
+  assert.equal(sustitucion.precioHoraDefecto, 40)
+  const purgar = creadas.find((o) => o.descripcion === 'Purgar')
+  assert.equal(purgar.codigo, 'FTR-01')
+  assert.equal(purgar.tiempos, '[20,30]')
+  assert.equal(purgar.tiempoDefecto, Number((20 / 60).toFixed(4)))
+})
+
+test('importarTrabajos es idempotente: la segunda importación no crea nada y actualiza todo', async () => {
+  const prisma = crearPrismaFalso({ ajuste: { clave: 'precioHora', valor: '40' } })
+  const excel = excelBase64(FILAS_TRABAJOS)
+
+  const primera = await importarTrabajos(prisma, excel)
+  assert.equal(primera.creados, 3)
+  assert.equal(primera.actualizados, 0)
+
+  const segunda = await importarTrabajos(prisma, excel)
+  assert.equal(segunda.leidos, 3)
+  assert.equal(segunda.creados, 0)
+  assert.equal(segunda.actualizados, 3)
+  assert.equal(prisma.operacionesMap.size, 3)
+})
+
+test('importarTrabajos usa 30 €/h por defecto si no hay ajuste de precio/hora', async () => {
+  const prisma = crearPrismaFalso()
+  await importarTrabajos(prisma, excelBase64(FILAS_TRABAJOS))
+  for (const operacion of prisma.operacionesMap.values()) {
+    assert.equal(operacion.precioHoraDefecto, 30)
+  }
+})
+
+test('importarTrabajos con simular no escribe nada', async () => {
+  const prisma = crearPrismaFalso()
+  const resumen = await importarTrabajos(prisma, excelBase64(FILAS_TRABAJOS), { simular: true })
+
+  assert.equal(resumen.simulado, true)
+  assert.equal(resumen.creados, 3)
+  assert.equal(prisma.llamadas.create, 0)
+  assert.equal(prisma.llamadas.update, 0)
+  assert.equal(prisma.llamadas.transaction, 0)
+  assert.equal(prisma.operacionesMap.size, 0)
+})
+
 // --- Errores y exportaciones ----------------------------------------------
 
 test('las importaciones lanzan error si el texto está vacío o no es un string', async () => {
@@ -279,6 +409,14 @@ test('las importaciones lanzan error si el texto está vacío o no es un string'
   await assert.rejects(importarClientes(prisma, undefined), /El fichero está vacío/)
   await assert.rejects(importarArticulos(prisma, '   '), /El fichero está vacío/)
   await assert.rejects(importarBicicletas(prisma, null), /El fichero está vacío/)
+  await assert.rejects(importarTrabajos(prisma, ''), /El fichero está vacío/)
+  await assert.rejects(importarTrabajos(prisma, undefined), /El fichero está vacío/)
+})
+
+test('importarTrabajos lanza error si el contenido no es un Excel válido', async () => {
+  const prisma = crearPrismaFalso()
+  const noExcel = Buffer.from('esto no es una hoja de cálculo').toString('base64')
+  await assert.rejects(importarTrabajos(prisma, noExcel), /no es un Excel válido/)
 })
 
 test('las importaciones lanzan error si no hay línea de cabeceras', async () => {
@@ -293,5 +431,6 @@ test('IMPORTACIONES permite elegir la importación por nombre', () => {
   assert.equal(IMPORTACIONES.clientes, importarClientes)
   assert.equal(IMPORTACIONES.articulos, importarArticulos)
   assert.equal(IMPORTACIONES.bicicletas, importarBicicletas)
+  assert.equal(IMPORTACIONES.trabajos, importarTrabajos)
 })
 

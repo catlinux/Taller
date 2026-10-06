@@ -4,11 +4,12 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { apiGet, apiPost } from '../../lib/api.js'
 import { IconFlechaArriba } from '../Icons.jsx'
 
-// Descripción de las tres tarjetas de importación (en el orden en que hay que subirlas).
+// Descripción de las tarjetas de importación (en el orden en que hay que subirlas).
 const TARJETAS = [
   { tipo: 'clientes', titulo: 'Clientes', columnas: 'Cód;Nombre;Domicilio;C.P.;Población;Provincia;Teléfono;NIF' },
   { tipo: 'articulos', titulo: 'Artículos', columnas: 'Código;Descripción;Referencia;Prov.;P.Costo;P.Venta;Stock, agrupados por familia' },
   { tipo: 'bicicletas', titulo: 'Bicicletas', columnas: 'CLIENT;MARCA;MODEL;Nº SERIE;CATEGORIA' },
+  { tipo: 'trabajos', titulo: 'Tiempos de trabajos', columnas: 'Excel con categorías y tiempos HH:MM por trabajo (Tiempos sexagesimales)', binario: true },
 ]
 
 // Lee un fichero en el navegador y devuelve su texto. Prueba UTF-8 y, si no es
@@ -20,6 +21,17 @@ async function leerTextoFichero(fichero) {
   } catch {
     return new TextDecoder('windows-1252').decode(buffer)
   }
+}
+
+// Codifica un ArrayBuffer en base64 (para subir un Excel binario sin TextDecoder).
+async function leerBase64Fichero(fichero) {
+  const bytes = new Uint8Array(await fichero.arrayBuffer())
+  let binario = ''
+  const trozo = 0x8000
+  for (let i = 0; i < bytes.length; i += trozo) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + trozo))
+  }
+  return btoa(binario)
 }
 
 // Una fila (etiqueta + valor) de la tabla de resumen.
@@ -43,6 +55,7 @@ function ResumenSimulacion({ resumen }) {
           <FilaResumen etiqueta="Se crearán" valor={resumen.creados} />
           <FilaResumen etiqueta="Se actualizarán" valor={resumen.actualizados} />
           {resumen.familias != null && <FilaResumen etiqueta="Familias distintas" valor={resumen.familias} />}
+          {resumen.categorias != null && <FilaResumen etiqueta="Categorías" valor={resumen.categorias} />}
         </tbody>
       </table>
       {resumen.omitidos?.length > 0 && (
@@ -84,7 +97,7 @@ function ResultadoImportacion({ resultado }) {
 }
 
 // Tarjeta de importación de un tipo de dato: fichero -> simulación -> importación.
-function TarjetaImportacion({ tipo, titulo, columnas }) {
+function TarjetaImportacion({ tipo, titulo, columnas, binario = false }) {
   const { token } = useAuth()
   const queryClient = useQueryClient()
   const inputRef = useRef(null)
@@ -110,7 +123,7 @@ function TarjetaImportacion({ tipo, titulo, columnas }) {
         setResumen(null)
         setResultado(datos)
         // Refresca las pantallas que muestran estos datos.
-        for (const clave of ['clientes', 'articulos', 'bicicletas', 'dashboard']) {
+        for (const clave of ['clientes', 'articulos', 'bicicletas', 'operaciones', 'dashboard']) {
           queryClient.invalidateQueries([clave])
         }
       },
@@ -128,9 +141,9 @@ function TarjetaImportacion({ tipo, titulo, columnas }) {
     setResultado(null)
     setNombreFichero(fichero.name)
     try {
-      const texto = await leerTextoFichero(fichero)
-      setContenido(texto)
-      simular.mutate(texto)
+      const datos = binario ? await leerBase64Fichero(fichero) : await leerTextoFichero(fichero)
+      setContenido(datos)
+      simular.mutate(datos)
     } catch {
       setContenido('')
       setError('No se pudo leer el fichero.')
@@ -170,7 +183,7 @@ function TarjetaImportacion({ tipo, titulo, columnas }) {
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv,.txt"
+          accept={binario ? '.xlsx,.xls' : '.csv,text/csv,.txt'}
           onChange={alElegirFichero}
           disabled={cargando}
           aria-label={`Fichero de ${titulo}`}

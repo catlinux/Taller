@@ -247,6 +247,9 @@ model OperacionManoObra {
   id            Int       @id @default(autoincrement())
   codigo        String    @unique
   descripcion   String
+  categoria     String?   // Categoría del catálogo (p. ej. «Freno trasero»)
+  tiempos       String?   // Tiempos alternativos en minutos (JSON, p. ej. "[20,45]")
+  ordenCatalogo Int       @default(0) // Posición dentro de su categoría
   tiempoDefecto Float     @default(0.5) // Horas por defecto
   precioHoraDefecto Float @default(30)
   activo        Boolean   @default(true)

@@ -6,6 +6,8 @@ import {
   textoONull,
 } from '../../scripts/lib/csv.js'
 import { sinStockDesdeNuevo } from './stock.js'
+import { leerExcelTiempos, prefijoCategoria } from './tiemposTrabajos.js'
+import { normalizarTexto } from './texto.js'
 
 // Importaciones masivas desde los listados exportados del ERP antiguo.
 //
@@ -492,10 +494,129 @@ export async function importarBicicletas(prisma, texto, { simular = false } = {}
   }
 }
 
+// --- Trabajos (tiempos del Excel «Tiempos sexagesimales») -----------------
+
+// Clave de emparejamiento: categoría + descripción, sin mayúsculas ni tildes.
+function claveTrabajo(categoria, descripcion) {
+  return `${normalizarTexto(categoria)}||${normalizarTexto(descripcion)}`
+}
+
+// Convierte minutos a horas (redondeadas a 4 decimales) para tiempoDefecto.
+function horasDeMinutos(minutos) {
+  return Number((minutos / 60).toFixed(4))
+}
+
+// Primer código libre con el prefijo dado (prefijo-01, prefijo-02, ...).
+function siguienteCodigoTrabajo(prefijo, codigosUsados) {
+  let numero = 1
+  let codigo = `${prefijo}-${String(numero).padStart(2, '0')}`
+  while (codigosUsados.has(codigo)) {
+    numero++
+    codigo = `${prefijo}-${String(numero).padStart(2, '0')}`
+  }
+  return codigo
+}
+
+// Lee el precio/hora por defecto del ajuste 'precioHora' (30 si no hay).
+async function leerPrecioHora(prisma) {
+  try {
+    const fila = await prisma.ajuste.findUnique({ where: { clave: 'precioHora' } })
+    if (!fila) return 30
+    const valor = JSON.parse(fila.valor)
+    return typeof valor === 'number' && Number.isFinite(valor) ? valor : 30
+  } catch {
+    return 30
+  }
+}
+
+// Importa el Excel de tiempos de trabajos al catálogo de operaciones de mano de
+// obra. `contenido` es el .xlsx en base64. Crea las operaciones que faltan y
+// actualiza las que ya existen (misma categoría y descripción normalizada); no
+// borra ni desactiva nada.
+export async function importarTrabajos(prisma, contenido, { simular = false } = {}) {
+  if (typeof contenido !== 'string' || contenido.trim() === '') {
+    throw new Error('El fichero está vacío')
+  }
+
+  let parseado
+  try {
+    parseado = leerExcelTiempos(Buffer.from(contenido, 'base64'))
+  } catch {
+    throw new Error('El fichero no es un Excel válido')
+  }
+  const { trabajos, avisos } = parseado
+
+  const precioHora = await leerPrecioHora(prisma)
+
+  // Operaciones existentes: para emparejar y para saber qué códigos están libres.
+  const existentes = await prisma.operacionManoObra.findMany({
+    where: {},
+    select: { id: true, codigo: true, categoria: true, descripcion: true },
+  })
+  const porClave = new Map()
+  const codigosUsados = new Set()
+  for (const operacion of existentes) {
+    codigosUsados.add(operacion.codigo)
+    porClave.set(claveTrabajo(operacion.categoria, operacion.descripcion), operacion)
+  }
+
+  const aCrear = []
+  const aActualizar = []
+  for (const trabajo of trabajos) {
+    const tiempos = JSON.stringify(trabajo.tiempos)
+    const tiempoDefecto = horasDeMinutos(trabajo.tiempos[0])
+    const existente = porClave.get(claveTrabajo(trabajo.categoria, trabajo.nombre))
+    if (existente) {
+      // No se tocan el código ni el precio/hora de lo que ya existe.
+      aActualizar.push({
+        id: existente.id,
+        data: { categoria: trabajo.categoria, tiempos, tiempoDefecto, ordenCatalogo: trabajo.orden, activo: true },
+      })
+    } else {
+      const codigo = siguienteCodigoTrabajo(prefijoCategoria(trabajo.categoria), codigosUsados)
+      codigosUsados.add(codigo)
+      aCrear.push({
+        codigo,
+        descripcion: trabajo.nombre,
+        categoria: trabajo.categoria,
+        tiempos,
+        tiempoDefecto,
+        ordenCatalogo: trabajo.orden,
+        precioHoraDefecto: precioHora,
+      })
+    }
+  }
+
+  if (!simular && (aCrear.length > 0 || aActualizar.length > 0)) {
+    await prisma.$transaction([
+      ...aCrear.map((data) => prisma.operacionManoObra.create({ data })),
+      ...aActualizar.map(({ id, data }) => prisma.operacionManoObra.update({ where: { id }, data })),
+    ])
+  }
+
+  // Resumen de omisiones a partir de los avisos del parser.
+  const conteo = new Map()
+  for (const aviso of avisos) {
+    const motivo = aviso.motivo ?? String(aviso)
+    conteo.set(motivo, (conteo.get(motivo) ?? 0) + 1)
+  }
+
+  return {
+    tipo: 'trabajos',
+    leidos: trabajos.length,
+    creados: aCrear.length,
+    actualizados: aActualizar.length,
+    omitidos: [...conteo.entries()].map(([motivo, cantidad]) => ({ motivo, cantidad })),
+    categorias: new Set(trabajos.map((trabajo) => trabajo.categoria)).size,
+    simulado: simular,
+  }
+}
+
 // Permite elegir la importación por nombre.
 export const IMPORTACIONES = {
   clientes: importarClientes,
   articulos: importarArticulos,
   bicicletas: importarBicicletas,
+  trabajos: importarTrabajos,
 }
 
