@@ -12,6 +12,7 @@ import AvisoActualizacion from './AvisoActualizacion.jsx'
 import {
   IconTaller,
   IconOrdenes,
+  IconCalendario,
   IconClientes,
   IconBicis,
   IconArticulos,
@@ -30,6 +31,7 @@ const AVISO_SESION_MS = 5 * 60 * 1000
 const navPrincipal = [
   { to: '/', end: true, label: 'Taller', icon: IconTaller },
   { to: '/ordenes', label: 'Órdenes', icon: IconOrdenes },
+  { to: '/agenda', label: 'Agenda', icon: IconCalendario },
   { to: '/clientes', label: 'Clientes', icon: IconClientes },
   { to: '/bicicletas', label: 'Bicicletas', icon: IconBicis },
   { to: '/articulos', label: 'Artículos', icon: IconArticulos },

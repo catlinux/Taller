@@ -16,6 +16,7 @@ import Ordenes from './pages/Ordenes.jsx'
 // Páginas de carga diferida: solo se descargan cuando se navega a ellas.
 const OrdenDetalle = lazy(() => import('./pages/OrdenDetalle.jsx'))
 const Configuracion = lazy(() => import('./pages/Configuracion.jsx'))
+const Agenda = lazy(() => import('./pages/Agenda.jsx'))
 
 function ProtectedLayout() {
   const { token, user, isLoading } = useAuth()
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/ordenes" element={<Ordenes />} />
           <Route path="/ordenes/nueva" element={<OrdenDetalle />} />
           <Route path="/ordenes/:id" element={<OrdenDetalle />} />
+          <Route path="/agenda" element={<Agenda />} />
           <Route path="/configuracion" element={<Configuracion />} />
           <Route path="/configuracion/:pestana" element={<Configuracion />} />
           <Route path="/operaciones" element={<Navigate to="/configuracion/operaciones" replace />} />

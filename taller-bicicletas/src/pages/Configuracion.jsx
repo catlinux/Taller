@@ -5,6 +5,7 @@ import PapeleraPanel from '../components/config/PapeleraPanel.jsx'
 import TablasPanel from '../components/config/TablasPanel.jsx'
 import AparienciaPanel from '../components/config/AparienciaPanel.jsx'
 import TallerPanel from '../components/config/TallerPanel.jsx'
+import AgendaPanel from '../components/config/AgendaPanel.jsx'
 import DatosPanel from '../components/config/DatosPanel.jsx'
 import FactusolPanel from '../components/config/FactusolPanel.jsx'
 import SeguridadPanel from '../components/config/SeguridadPanel.jsx'
@@ -23,6 +24,7 @@ import {
   IconTabla,
   IconPaleta,
   IconTaller,
+  IconCalendario,
   IconSeguridad,
   IconActualizar,
   IconPapelera,
@@ -46,6 +48,7 @@ const PESTANAS = [
   { id: 'tablas', etiqueta: 'Tablas', Icono: IconTabla, soloAdmin: true, contenido: <TablasPanel /> },
   { id: 'apariencia', etiqueta: 'Apariencia', Icono: IconPaleta, soloAdmin: true, contenido: <AparienciaPanel /> },
   { id: 'taller', etiqueta: 'Taller', Icono: IconTaller, soloAdmin: true, contenido: <TallerPanel /> },
+  { id: 'agenda', etiqueta: 'Agenda', Icono: IconCalendario, soloAdmin: true, contenido: <AgendaPanel /> },
   { id: 'factusol', etiqueta: 'Factusol', Icono: IconDescargar, soloAdmin: true, contenido: <FactusolPanel /> },
   { id: 'datos', etiqueta: 'Datos', Icono: IconTabla, soloAdmin: true, contenido: <DatosPanel /> },
   { id: 'importar', etiqueta: 'Importar', Icono: IconFlechaArriba, soloAdmin: true, contenido: <ImportarPanel /> },
