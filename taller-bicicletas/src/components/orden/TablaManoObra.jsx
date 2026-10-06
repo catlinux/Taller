@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api.js'
 import { aNumero, formatearEuros } from '../../lib/ordenes.js'
+import { formatearMinutos, horasAMinutos, minutosAHoras } from '../../lib/tiempos.js'
 import { useAjustes } from '../../context/AjustesContext.jsx'
 import { useDeshacer } from '../../context/DeshacerContext.jsx'
 
@@ -16,6 +17,13 @@ function formatearPrecio(valor) {
   const numero = aNumero(valor)
   if (numero === null) return ''
   return numero.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Tiempos (en minutos) de una operación del catálogo: los alternativos o, si no
+// tiene, el tiempo por defecto (en horas), para poder mostrarlos como H:MM.
+function tiemposDe(operacion) {
+  const tiempos = Array.isArray(operacion.tiempos) ? operacion.tiempos : []
+  return tiempos.length > 0 ? tiempos : [horasAMinutos(operacion.tiempoDefecto)]
 }
 
 // Celda editable en línea: guarda el texto mientras se escribe y confirma al
@@ -74,6 +82,8 @@ export default function TablaManoObra({ orden, token }) {
   const [busqueda, setBusqueda] = useState('')
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(-1)
+  // Operación pendiente de elegir tiempo (cuando tiene varios tiempos posibles).
+  const [operacionTiempos, setOperacionTiempos] = useState(null)
 
   // Debounce de 250 ms: retrasa la consulta al servidor mientras se escribe.
   useEffect(() => {
@@ -137,19 +147,29 @@ export default function TablaManoObra({ orden, token }) {
   function restablecerBuscador() {
     setTexto('')
     setBusqueda('')
+    setOperacionTiempos(null)
     setAbierto(false)
     setActivo(-1)
   }
 
-  function elegirOperacion(operacion) {
+  // Añade la línea de mano de obra con el tiempo indicado (en horas).
+  function agregarConTiempo(operacion, tiempoHoras) {
     setErrorAccion('')
     agregarLinea.mutate({
       codigoOp: operacion.codigo,
       descripcion: operacion.descripcion,
-      tiempo: operacion.tiempoDefecto,
+      tiempo: tiempoHoras,
       precioHora: operacion.precioHoraDefecto,
     })
     restablecerBuscador()
+  }
+
+  function elegirOperacion(operacion) {
+    const tiempos = Array.isArray(operacion.tiempos) ? operacion.tiempos : []
+    // Con varios tiempos, primero se pregunta cuál usar.
+    if (tiempos.length > 1) { setOperacionTiempos(operacion); return }
+    const tiempoHoras = tiempos.length === 1 ? minutosAHoras(tiempos[0]) : operacion.tiempoDefecto
+    agregarConTiempo(operacion, tiempoHoras)
   }
 
   function anadirLineaLibre() {
@@ -168,8 +188,13 @@ export default function TablaManoObra({ orden, token }) {
   }
 
   function manejarTeclas(event) {
-    if (event.key === 'Escape') { setAbierto(false); return }
-    if (!abierto || resultados.length === 0) return
+    if (event.key === 'Escape') {
+      // Escape cierra la elección de tiempo (si la hay) o el desplegable.
+      if (operacionTiempos) setOperacionTiempos(null)
+      else setAbierto(false)
+      return
+    }
+    if (operacionTiempos || !abierto || resultados.length === 0) return
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       setActivo((i) => Math.min(i + 1, resultados.length - 1))
@@ -233,7 +258,27 @@ export default function TablaManoObra({ orden, token }) {
             aria-label="Buscar operación"
             className={inputClass}
           />
-          {abierto && busqueda.length > 0 && (
+          {abierto && operacionTiempos && (
+            <div className="absolute z-20 mt-1 w-full rounded-lg border border-antracita-600 bg-antracita-800 p-3 shadow-xl">
+              <p className="text-sm text-slate-300">
+                <span className="font-medium text-white">{operacionTiempos.codigo}</span> · {operacionTiempos.descripcion} — elige el tiempo:
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {tiemposDe(operacionTiempos).map((min, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onMouseDown={(event) => { event.preventDefault(); agregarConTiempo(operacionTiempos, minutosAHoras(min)) }}
+                    className="rounded-md border border-azul-500/50 bg-azul-500/10 px-3 py-1.5 text-sm font-medium text-azul-300 hover:bg-azul-500/20"
+                  >
+                    Tiempo {i + 1}: {formatearMinutos(min)}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">Pulsa Escape para cancelar.</p>
+            </div>
+          )}
+          {abierto && !operacionTiempos && busqueda.length > 0 && (
             <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-antracita-600 bg-antracita-800 shadow-xl">
               {resultados.length === 0
                 ? <li className="px-4 py-3 text-sm text-slate-400">Sin resultados.</li>
@@ -244,8 +289,11 @@ export default function TablaManoObra({ orden, token }) {
                       onMouseDown={(event) => { event.preventDefault(); elegirOperacion(operacion) }}
                       className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm ${i === activo ? 'bg-azul-500/20' : 'hover:bg-antracita-700'}`}
                     >
-                      <span className="text-slate-200"><span className="font-medium text-white">{operacion.codigo}</span> · {operacion.descripcion}</span>
-                      <span className="shrink-0 text-slate-400">{operacion.tiempoDefecto} h · {formatearEuros(operacion.precioHoraDefecto)}/h</span>
+                      <span className="min-w-0 text-slate-200">
+                        <span className="font-medium text-white">{operacion.codigo}</span> · {operacion.descripcion}
+                        {operacion.categoria && <span className="mt-0.5 block truncate text-xs text-slate-500">{operacion.categoria}</span>}
+                      </span>
+                      <span className="shrink-0 text-slate-400">{tiemposDe(operacion).map((min) => formatearMinutos(min)).join(' · ')} · {formatearEuros(operacion.precioHoraDefecto)}/h</span>
                     </button>
                   </li>
                 ))}
