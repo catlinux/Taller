@@ -342,6 +342,7 @@ test('importarTrabajos crea las operaciones nuevas y actualiza las existentes po
   assert.equal(resumen.actualizados, 1)
   assert.equal(resumen.categorias, 2)
   assert.equal(resumen.simulado, false)
+  assert.equal(resumen.formato, 'bloques')
 
   // La existente se actualiza sin tocar el código ni su precio/hora.
   const existente = prisma.operacionesMap.get(50)
@@ -364,6 +365,26 @@ test('importarTrabajos crea las operaciones nuevas y actualiza las existentes po
   assert.equal(purgar.codigo, 'FTR-01')
   assert.equal(purgar.tiempos, '[20,30]')
   assert.equal(purgar.tiempoDefecto, Number((20 / 60).toFixed(4)))
+})
+
+test('importarTrabajos importa un Excel en formato de tabla y lo indica en el resumen', async () => {
+  // Formato de tabla: A categoría, B descripción y C/D/E tiempos (con fila de títulos).
+  const filasTabla = [
+    ['Categoría', 'Descripción', 'Tiempo', 'Tiempo 2', 'Tiempo 3'],
+    ['Dirección', 'Ajuste', 0.006944444444444444, null, null],
+    ['Freno trasero', 'Sustitución', '00:20', '00:45', null],
+  ]
+  const prisma = crearPrismaFalso({ ajuste: { clave: 'precioHora', valor: '40' } })
+  const resumen = await importarTrabajos(prisma, excelBase64(filasTabla))
+
+  assert.equal(resumen.formato, 'tabla')
+  assert.equal(resumen.leidos, 2)
+  assert.equal(resumen.creados, 2)
+
+  const sustitucion = [...prisma.operacionesMap.values()].find((o) => o.descripcion === 'Sustitución')
+  assert.equal(sustitucion.codigo, 'FTR-01')
+  assert.equal(sustitucion.tiempos, '[20,45]')
+  assert.equal(sustitucion.tiempoDefecto, Number((20 / 60).toFixed(4)))
 })
 
 test('importarTrabajos es idempotente: la segunda importación no crea nada y actualiza todo', async () => {

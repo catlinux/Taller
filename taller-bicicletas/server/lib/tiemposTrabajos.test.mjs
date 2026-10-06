@@ -168,3 +168,61 @@ test('una cabecera sin categoría tras una fila vacía sigue en la categoría an
   assert.equal(trabajos.find((t) => t.nombre === 'Sustitución llanta').categoria, 'Ruedas')
   assert.equal(trabajos.find((t) => t.nombre === 'Ajuste horquilla').categoria, 'Horquilla')
 })
+
+// --- Formato de tabla (una fila por trabajo) --------------------------------
+
+// Matriz FICTICIA en formato tabla: cubre fila de títulos, tiempo como número de
+// Excel, texto «HH:MM» y Date, 1-3 tiempos, filas vacías entre categorías,
+// categoría vacía heredada, erratas, duplicado y trabajo sin tiempo.
+const FILAS_TABLA = [
+  ['Categoría', 'Descripción', 'Tiempo', 'Tiempo 2', 'Tiempo 3'], // fila de títulos (se ignora)
+  ['Dirección', 'Ajuste', 0.006944444444444444, null, null], // número de Excel = 0:10
+  ['Dirección', 'Sustitución', '00:20', '00:45', null], // 2 tiempos (texto HH:MM)
+  ['Cambios', 'Ajuste desviador', '00:10', '00:20', '00:30'], // 3 tiempos
+  [], // fila vacía entre categorías
+  ['Ruedas', 'Centrado de rueda', 0.013888888888888888, null, null], // número de Excel = 0:20
+  [null, 'Sustitución radio', new Date(Date.UTC(1899, 11, 30, 0, 15, 0)), null, null], // categoría heredada + Date = 0:15
+  ['Freno trasero', 'Purgr', '00:20', '00:45', null], // errata
+  ['Freno trasero', 'Sustitución', '00:30', null, null],
+  ['Freno trasero', 'Sustitución', '00:40', null, null], // duplicado: se queda el primero
+  ['Freno trasero', 'Trabajo sin tiempo', null, null, null], // sin ningún tiempo: se omite
+]
+
+const TRABAJOS_TABLA_ESPERADOS = [
+  { categoria: 'Dirección', nombre: 'Ajuste', tiempos: [10], orden: 0 },
+  { categoria: 'Dirección', nombre: 'Sustitución', tiempos: [20, 45], orden: 1 },
+  { categoria: 'Cambios', nombre: 'Ajuste desviador', tiempos: [10, 20, 30], orden: 0 },
+  { categoria: 'Ruedas', nombre: 'Centrado de rueda', tiempos: [20], orden: 0 },
+  { categoria: 'Ruedas', nombre: 'Sustitución radio', tiempos: [15], orden: 1 },
+  { categoria: 'Freno trasero', nombre: 'Purgar', tiempos: [20, 45], orden: 0 },
+  { categoria: 'Freno trasero', nombre: 'Sustitución', tiempos: [30], orden: 1 },
+]
+
+test('parsearTiemposTrabajos detecta e interpreta el formato de tabla', () => {
+  const { trabajos, avisos, formato } = parsearTiemposTrabajos(FILAS_TABLA)
+  assert.equal(formato, 'tabla')
+  assert.deepEqual(trabajos, TRABAJOS_TABLA_ESPERADOS)
+  assert.deepEqual(avisos, [
+    { motivo: 'duplicado en el Excel', nombre: 'Sustitución', categoria: 'Freno trasero' },
+    { motivo: 'trabajo sin tiempos', nombre: 'Trabajo sin tiempo', categoria: 'Freno trasero' },
+  ])
+})
+
+test('parsearTiemposTrabajos detecta el formato por bloques', () => {
+  const { formato } = parsearTiemposTrabajos(FILAS)
+  assert.equal(formato, 'bloques')
+})
+
+test('el formato de tabla funciona también sin fila de títulos', () => {
+  const filas = [
+    ['Horquilla', 'Ajuste horquilla', '00:20', null, null],
+    ['Horquilla', 'Sustitución', '00:30', '01:00', null],
+  ]
+  const { trabajos, avisos, formato } = parsearTiemposTrabajos(filas)
+  assert.equal(formato, 'tabla')
+  assert.deepEqual(trabajos, [
+    { categoria: 'Horquilla', nombre: 'Ajuste horquilla', tiempos: [20], orden: 0 },
+    { categoria: 'Horquilla', nombre: 'Sustitución', tiempos: [30, 60], orden: 1 },
+  ])
+  assert.deepEqual(avisos, [])
+})

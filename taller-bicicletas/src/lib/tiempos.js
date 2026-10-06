@@ -24,6 +24,28 @@ export function parsearTiempo(texto) {
   return total
 }
 
+// Interpreta una duración escrita a mano y devuelve los minutos (de 1 a 1440) o
+// null si no es válida. Admite «H:MM»/«HH:MM», solo minutos (p. ej. '45' = 0:45)
+// y horas con «h» (p. ej. '1h' = 60, '1,5h' = 90, '0,5h' = 30).
+export function parsearDuracionLibre(texto) {
+  if (typeof texto !== 'string') return null
+  const limpio = texto.trim()
+  if (limpio === '') return null
+  // Horas con «h»: '1h', '2 h', '1,5h' o '1.5h'.
+  const coincideHoras = /^(\d{1,2}(?:[.,]\d+)?)\s*h$/i.exec(limpio)
+  if (coincideHoras) {
+    const total = Math.round(Number(coincideHoras[1].replace(',', '.')) * 60)
+    return total >= 1 && total <= 1440 ? total : null
+  }
+  // Solo minutos: '45' = 0:45.
+  if (/^\d{1,4}$/.test(limpio)) {
+    const total = Number(limpio)
+    return total >= 1 && total <= 1440 ? total : null
+  }
+  // «H:MM» o «HH:MM».
+  return parsearTiempo(limpio)
+}
+
 // Convierte horas a minutos enteros (redondeado); null si no es un número.
 export function horasAMinutos(horas) {
   const numero = Number(horas)

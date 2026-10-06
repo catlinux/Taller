@@ -544,7 +544,7 @@ export async function importarTrabajos(prisma, contenido, { simular = false } = 
   } catch {
     throw new Error('El fichero no es un Excel válido')
   }
-  const { trabajos, avisos } = parseado
+  const { trabajos, avisos, formato } = parseado
 
   const precioHora = await leerPrecioHora(prisma)
 
@@ -603,6 +603,7 @@ export async function importarTrabajos(prisma, contenido, { simular = false } = 
 
   return {
     tipo: 'trabajos',
+    formato,
     leidos: trabajos.length,
     creados: aCrear.length,
     actualizados: aActualizar.length,

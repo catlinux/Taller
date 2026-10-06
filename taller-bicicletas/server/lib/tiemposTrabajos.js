@@ -119,9 +119,10 @@ function esFilaVacia(fila) {
   return fila.every(esVacio)
 }
 
-// Interpreta las filas de la hoja y devuelve { trabajos, avisos }.
-// Cada aviso es { motivo, nombre?, categoria? } (trabajos sin tiempos o celdas raras).
-export function parsearTiemposTrabajos(filas) {
+// Interpreta las filas del formato por BLOQUES (el antiguo) y devuelve
+// { trabajos, avisos }. Cada aviso es { motivo, nombre?, categoria? } (trabajos
+// sin tiempos o celdas raras).
+function parsearTiemposBloques(filas) {
   const lista = Array.isArray(filas) ? filas : []
   const trabajos = []
   const avisos = []
@@ -189,6 +190,84 @@ export function parsearTiemposTrabajos(filas) {
 
   cerrarGrupo()
   return { trabajos, avisos }
+}
+
+// --- Formato de TABLA -----------------------------------------------------
+// Una fila por trabajo: A = categoría, B = descripción, C/D/E = tiempos (el
+// primero principal y los otros alternativos). La categoría de A se repite en
+// cada fila (si viene vacía, se hereda la de la fila anterior).
+function parsearTiemposTabla(filas) {
+  const trabajos = []
+  const avisos = []
+  const ordenPorCategoria = new Map()
+  const vistos = new Set()
+  let categoriaActual = null
+  let primera = true
+
+  for (const fila of filas) {
+    if (esFilaVacia(fila)) continue
+    // Fila de títulos: la primera fila, si su columna C no es un tiempo.
+    if (primera && minutosDeCelda(fila[2]) === null) { primera = false; continue }
+    primera = false
+
+    const categoria = normalizarNombre(fila[0])
+    if (categoria !== '') categoriaActual = categoria
+
+    const nombre = normalizarNombre(fila[1])
+    if (nombre === '') continue // sin descripción: no es un trabajo
+
+    // Tiempos válidos de C, D y E, en ese orden.
+    const tiempos = []
+    for (let col = 2; col <= 4; col++) {
+      const minutos = minutosDeCelda(fila[col])
+      if (minutos !== null) tiempos.push(minutos)
+    }
+    if (tiempos.length === 0) {
+      avisos.push({ motivo: 'trabajo sin tiempos', nombre, categoria: categoriaActual })
+      continue
+    }
+
+    // Duplicado (misma categoría y descripción normalizada): se queda el primero.
+    const clave = `${normalizarClave(categoriaActual)}|${normalizarClave(nombre)}`
+    if (vistos.has(clave)) {
+      avisos.push({ motivo: 'duplicado en el Excel', nombre, categoria: categoriaActual })
+      continue
+    }
+    vistos.add(clave)
+
+    const orden = ordenPorCategoria.get(categoriaActual) ?? 0
+    ordenPorCategoria.set(categoriaActual, orden + 1)
+    trabajos.push({ categoria: categoriaActual, nombre, tiempos, orden })
+  }
+
+  return { trabajos, avisos }
+}
+
+// ¿Es una descripción? (texto con contenido que no es un tiempo).
+function esTextoNoTiempo(valor) {
+  return typeof valor === 'string' && valor.trim() !== '' && minutosDeCelda(valor) === null
+}
+
+// Detecta el formato de la hoja: 'tabla' si en la mayoría de las filas no vacías
+// la columna B es texto y la C es un tiempo; si no, el formato 'bloques'.
+function detectarFormato(filas) {
+  let noVacias = 0
+  let deTabla = 0
+  for (const fila of filas) {
+    if (esFilaVacia(fila)) continue
+    noVacias++
+    if (esTextoNoTiempo(fila[1]) && minutosDeCelda(fila[2]) !== null) deTabla++
+  }
+  return deTabla > noVacias / 2 ? 'tabla' : 'bloques'
+}
+
+// Interpreta las filas de la hoja y devuelve { trabajos, avisos, formato }.
+// El formato ('tabla' o 'bloques') se detecta automáticamente.
+export function parsearTiemposTrabajos(filas) {
+  const lista = Array.isArray(filas) ? filas : []
+  const formato = detectarFormato(lista)
+  const { trabajos, avisos } = formato === 'tabla' ? parsearTiemposTabla(lista) : parsearTiemposBloques(lista)
+  return { trabajos, avisos, formato }
 }
 
 // ¿El buffer empieza con la firma de un Excel? (.xlsx/.xlsm/.xlsb son ZIP y los

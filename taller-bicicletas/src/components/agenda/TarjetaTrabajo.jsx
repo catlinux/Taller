@@ -1,9 +1,11 @@
-import { formatearMinutos } from '../../lib/tiempos.js'
+import { useRef, useState } from 'react'
+import { formatearMinutos, parsearDuracionLibre } from '../../lib/tiempos.js'
 
 // Tarjeta compacta de un trabajo programado dentro de una celda de la agenda.
-// Muestra descripción (truncada), categoría y duración; si el trabajo tiene
-// varios tiempos, la duración es un desplegable para cambiar entre ellos. Se
-// puede arrastrar a otra celda válida y ofrece «Mover» y quitar.
+// Muestra descripción (truncada), categoría y duración. La duración es siempre
+// editable: al pulsarla se convierte en un campo de texto donde se escribe un
+// tiempo libre, con los tiempos del catálogo como sugerencias. Se puede arrastrar
+// a otra celda válida y ofrece «Mover» y quitar.
 export default function TarjetaTrabajo({
   trabajo,
   arrastrable = false,
@@ -15,6 +17,40 @@ export default function TarjetaTrabajo({
   onQuitar,
 }) {
   const tiempos = Array.isArray(trabajo.tiempos) ? trabajo.tiempos : []
+  const [editando, setEditando] = useState(false)
+  const [texto, setTexto] = useState('')
+  const [invalido, setInvalido] = useState(false)
+  const ignorarBlur = useRef(false)
+  const idLista = `tiempos-${trabajo.id}`
+
+  // El valor actual no está en el catálogo del trabajo: es una duración manual.
+  const esManual = !tiempos.includes(trabajo.minutos)
+
+  // Abre el campo de edición con la duración actual seleccionada.
+  function abrirEdicion() {
+    ignorarBlur.current = false
+    setInvalido(false)
+    setTexto(formatearMinutos(trabajo.minutos))
+    setEditando(true)
+  }
+
+  // Guarda el valor escrito (solo si es válido y distinto) y cierra el campo.
+  function guardar() {
+    const minutos = parsearDuracionLibre(texto)
+    if (minutos === null) { setInvalido(true); return }
+    if (minutos !== trabajo.minutos) onCambiarMinutos?.(trabajo, minutos)
+    setEditando(false)
+  }
+
+  function alTeclear(event) {
+    if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() }
+    else if (event.key === 'Escape') { event.preventDefault(); ignorarBlur.current = true; setEditando(false) }
+  }
+
+  function alPerderFoco() {
+    if (ignorarBlur.current) { ignorarBlur.current = false; return }
+    guardar()
+  }
 
   // No iniciar el arrastre si el gesto empieza en un control interactivo.
   function alArrastrarInicio(event) {
@@ -36,18 +72,38 @@ export default function TarjetaTrabajo({
           <p title={trabajo.descripcion} className="truncate text-sm font-medium text-white">{trabajo.descripcion}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">
             {trabajo.categoria && <span className="truncate">{trabajo.categoria}</span>}
-            {tiempos.length > 1 ? (
-              <select
-                value={trabajo.minutos}
-                aria-label={`Duración de ${trabajo.descripcion}`}
-                onChange={(event) => onCambiarMinutos?.(trabajo, Number(event.target.value))}
-                className="rounded border border-antracita-600 bg-antracita-800 px-1 py-0.5 text-xs text-slate-200 outline-none focus:border-azul-400"
-              >
-                {!tiempos.includes(trabajo.minutos) && <option value={trabajo.minutos}>{formatearMinutos(trabajo.minutos)}</option>}
-                {tiempos.map((min) => <option key={min} value={min}>{formatearMinutos(min)}</option>)}
-              </select>
+            {editando ? (
+              <>
+                <input
+                  autoFocus
+                  type="text"
+                  list={idLista}
+                  value={texto}
+                  aria-label={`Cambiar tiempo de ${trabajo.descripcion}`}
+                  title={invalido ? 'Tiempo no válido: usa H:MM (0:45) o minutos (45)' : 'Escribe el tiempo en H:MM o en minutos'}
+                  onChange={(event) => { setTexto(event.target.value); if (invalido) setInvalido(false) }}
+                  onKeyDown={alTeclear}
+                  onBlur={alPerderFoco}
+                  onFocus={(event) => event.target.select()}
+                  className={`w-16 rounded border bg-antracita-800 px-1 py-0.5 text-xs text-slate-200 outline-none ${invalido ? 'border-rose-500' : 'border-azul-400'}`}
+                />
+                <datalist id={idLista}>
+                  {tiempos.map((min) => <option key={min} value={formatearMinutos(min)} />)}
+                </datalist>
+              </>
             ) : (
-              <span>{formatearMinutos(trabajo.minutos)}</span>
+              <>
+                <button
+                  type="button"
+                  onClick={abrirEdicion}
+                  aria-label={`Cambiar tiempo de ${trabajo.descripcion}`}
+                  title="Cambiar tiempo"
+                  className="rounded border border-antracita-600 bg-antracita-800 px-1 py-0.5 text-xs text-slate-200 hover:border-azul-400 hover:text-white"
+                >
+                  {formatearMinutos(trabajo.minutos)}
+                </button>
+                {esManual && <span className="text-slate-500" title="Tiempo escrito a mano">(manual)</span>}
+              </>
             )}
           </div>
           {trabajo.nota && <p title={trabajo.nota} className="mt-0.5 truncate text-xs text-slate-500">{trabajo.nota}</p>}
