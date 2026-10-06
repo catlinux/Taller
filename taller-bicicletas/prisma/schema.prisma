@@ -254,6 +254,42 @@ model OperacionManoObra {
   precioHoraDefecto Float @default(30)
   activo        Boolean   @default(true)
   createdAt     DateTime  @default(now())
+
+  // Relaciones
+  agenda        AgendaTrabajo[]
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AGENDA (Planificación semanal de trabajos, de lunes a viernes)
+// ═══════════════════════════════════════════════════════════════
+model AgendaTrabajo {
+  id            Int      @id @default(autoincrement())
+  fecha         String   // Día laborable «AAAA-MM-DD»
+  hora          String   // Inicio de la fila «HH:MM»
+  operacionId   Int?
+  codigo        String?
+  descripcion   String
+  categoria     String?
+  tiempos       String?  // Copia JSON de los tiempos alternativos (minutos) al programar
+  minutos       Int      // Duración elegida
+  nota          String?
+  posicion      Int      @default(0) // Orden dentro de la misma hora
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  operacion     OperacionManoObra? @relation(fields: [operacionId], references: [id], onDelete: SetNull)
+
+  @@index([fecha])
+}
+
+// Personalización de un día concreto (horario y horas máximas propios). Si no
+// hay fila para una fecha, se usan los valores predeterminados generales.
+model AgendaDia {
+  fecha         String   @id // «AAAA-MM-DD»
+  tramos        String?  // JSON [{inicio,fin}] propio del día; null = predeterminado
+  horasMaximas  Float?   // null = predeterminado
+  updatedAt     DateTime @updatedAt
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -20,6 +20,7 @@ import actualizacionesRoutes from './routes/actualizaciones.js'
 import papeleraRoutes from './routes/papelera.js'
 import factusolRoutes from './routes/factusol.js'
 import importarRoutes from './routes/importar.js'
+import agendaRoutes from './routes/agenda.js'
 import prisma from './db.js'
 import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
@@ -76,6 +77,7 @@ app.use('/api/actualizaciones', actualizacionesRoutes)
 app.use('/api/papelera', papeleraRoutes)
 app.use('/api/factusol', factusolRoutes)
 app.use('/api/importar', importarRoutes)
+app.use('/api/agenda', agendaRoutes)
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {
