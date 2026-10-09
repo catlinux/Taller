@@ -168,7 +168,7 @@ Tras cada ejecución, el orquestador comprueba `git log`, `git branch -a`, `git 
 - **Ejecutor**: sesión Sonnet, esfuerzo alto, **sin delegar** (es la lógica delicada; el ejecutor barato falla en algoritmos así). Alternativa: AgentRelay con `effort: high` y revisión línea a línea.
 - `CHANGELOG.md`: entrada en `[Sin publicar]`.
 
-### [ ] Paso 3: API de la agenda por mecánico (1.14.0, menor)
+### [x] Paso 3: API de la agenda por mecánico (1.14.0, menor)
 
 - **Archivos**: `server/routes/agenda.js`, `server/index.js` (llamada a la migración) y `server/lib/agenda.js` (cálculo de calendario y ocupación por cola si hace falta).
 - Implementar el contrato de «API» de arriba usando `planificador.js`.

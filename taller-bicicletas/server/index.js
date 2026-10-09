@@ -26,6 +26,7 @@ import backupsRoutes, { ejecutarBackupAutomatico } from './routes/backups.js'
 import { cabecerasSeguridad } from './lib/seguridad.js'
 import { migrarPagos } from './lib/pagos.js'
 import { migrarEstados } from './lib/estados.js'
+import { migrarAgenda } from './lib/agendaMigracion.js'
 import { rellenarSinStock } from './lib/stock.js'
 import { purgarAntiguas } from './lib/papelera.js'
 import { ejecutarComprobacion } from './lib/actualizaciones.js'
@@ -119,6 +120,11 @@ migrarPagos(prisma).catch((error) => {
 // Migra los estados antiguos de las órdenes a la lista nueva (idempotente).
 migrarEstados(prisma).catch((error) => {
   console.error('Error al migrar los estados de las órdenes:', error)
+})
+
+// Convierte los trabajos de la agenda v1.13 (fecha y hora) en bloques con hora de inicio (idempotente).
+migrarAgenda(prisma).catch((error) => {
+  console.error('Error al migrar la agenda:', error)
 })
 
 // Rellena la fecha desde la que están sin stock los artículos existentes (idempotente).

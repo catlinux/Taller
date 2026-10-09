@@ -398,8 +398,9 @@ export function mover({ calendario, colas, trabajoId, fecha, x, desborde = null 
   let total = 0
   for (const [dia, items] of estado) {
     const resto = items.filter((i) => i.trabajoId !== trabajoId)
+    if (resto.length === items.length) continue
     total += items.reduce((suma, i) => (i.trabajoId === trabajoId ? suma + i.minutos : suma), 0)
-    estado.set(dia, resto)
+    cerrarDia(estado, ctx, dia, resto)
   }
   if (total === 0) throw new Error('El trabajo no tiene bloques en la agenda')
   return insertarEnEstado(estado, ids, ctx, { fecha, x, minutos: total, trabajoId, desborde })
