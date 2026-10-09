@@ -176,7 +176,7 @@ Tras cada ejecución, el orquestador comprueba `git log`, `git branch -a`, `git 
 - **Terminado cuando**: hay pruebas reales contra la API sobre una copia (crear, el 409, `forzar`, `siguiente`, mover, redimensionar, quitar, `mecanico=sin`), la migración convierte datos v1.13 y `npm test` está en verde.
 - **Ejecutor**: AgentRelay, esfuerzo alto (2 tareas: GET y migración; POST, PUT y DELETE).
 
-### [ ] Paso 4: interfaz de línea de tiempo (1.15.0, menor)
+### [x] Paso 4: interfaz de línea de tiempo (1.15.0, menor)
 
 Partido en dos tareas.
 

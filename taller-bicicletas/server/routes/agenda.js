@@ -197,6 +197,7 @@ router.get('/semana', async (req, res, next) => {
         tramos: cal.tramos,
         laborablesMin,
         maximoMin,
+        horasMaximas: cal.maxMin / 60,
         ocupadoMin,
         excedido: ocupadoMin > maximoMin,
         tramosPersonalizados: cal.tramosPersonalizados,

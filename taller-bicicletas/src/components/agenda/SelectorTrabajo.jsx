@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { agruparCatalogo } from '../../lib/agenda.js'
-import { formatearMinutos, horasAMinutos } from '../../lib/tiempos.js'
+import { formatearMinutos, horasAMinutos, parsearDuracionLibre } from '../../lib/tiempos.js'
+import ClienteCampo from './ClienteCampo.jsx'
 
 // Tiempos (minutos) de una operación del catálogo: los alternativos o el tiempo
 // por defecto (en horas) si no tiene.
@@ -10,14 +11,20 @@ function tiemposDe(operacion) {
 }
 
 const ANCHO = 340
-const ALTO_MAX = 360
+const ALTO_MAX = 470
 const MARGEN = 8
 
-// Selector de trabajo del catálogo: desplegable con filtro opcional anclado a la
-// celda. Lista el catálogo agrupado por categoría (sin tildes al filtrar) y se
-// maneja con flechas, Enter y Escape. Si la operación tiene varios tiempos, pide
-// elegir uno antes de programarla.
-export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCerrar, programando = false }) {
+// Selector de trabajo: panel anclado al punto donde se hizo clic. Lista el
+// catálogo agrupado por categoría (sin tildes al filtrar) y se maneja con
+// flechas, Enter y Escape; si la operación tiene varios tiempos pide elegir uno.
+// También permite un trabajo libre (descripción y duración) y un cliente opcional.
+// Llama a onElegir({ operacion, descripcion, minutos, cliente }).
+export default function SelectorTrabajo({ anclaRef, titulo, operaciones, token, onElegir, onCerrar, programando = false }) {
+  const [modo, setModo] = useState('catalogo')
+  const [cliente, setCliente] = useState(null)
+  const [descripcionLibre, setDescripcionLibre] = useState('')
+  const [duracionLibre, setDuracionLibre] = useState('1:00')
+  const [errorLibre, setErrorLibre] = useState('')
   const [filtro, setFiltro] = useState('')
   const [activo, setActivo] = useState(0)
   const [pendiente, setPendiente] = useState(null)
@@ -39,7 +46,7 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
     })
   }, [grupos])
 
-  // Coloca el panel junto a la celda (arriba si no cabe abajo).
+  // Coloca el panel junto al punto de anclaje (arriba si no cabe abajo).
   useLayoutEffect(() => {
     const rect = anclaRef?.current?.getBoundingClientRect()
     if (!rect) { setPos({ left: MARGEN, top: MARGEN }); return }
@@ -47,11 +54,11 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
     if (left + ANCHO > window.innerWidth - MARGEN) left = window.innerWidth - ANCHO - MARGEN
     if (left < MARGEN) left = MARGEN
     let top = rect.bottom + 4
-    if (top + ALTO_MAX > window.innerHeight - MARGEN) top = Math.max(MARGEN, rect.top - ALTO_MAX - 4)
+    if (top + ALTO_MAX > window.innerHeight - MARGEN) top = Math.max(MARGEN, window.innerHeight - ALTO_MAX - MARGEN)
     setPos({ left, top })
   }, [anclaRef])
 
-  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => { inputRef.current?.focus() }, [modo])
   useEffect(() => { setActivo(0) }, [filtro])
 
   // Cierra al pulsar fuera del panel. Se usa composedPath() porque al elegir un
@@ -61,19 +68,29 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
     function alClicFuera(event) {
       const ruta = event.composedPath()
       if (ruta.includes(panelRef.current)) return
-      if (ruta.includes(anclaRef?.current)) return
       onCerrar()
     }
     document.addEventListener('mousedown', alClicFuera)
     return () => document.removeEventListener('mousedown', alClicFuera)
-  }, [onCerrar, anclaRef])
+  }, [onCerrar])
 
   function elegir(operacion, minutos) {
     if (programando) return
-    if (minutos !== undefined) { onElegir(operacion, minutos); return }
+    if (minutos !== undefined) { onElegir({ operacion, minutos, cliente }); return }
     const tiempos = tiemposDe(operacion)
     if (tiempos.length > 1) { setPendiente(operacion); return }
-    onElegir(operacion, tiempos[0])
+    onElegir({ operacion, minutos: tiempos[0], cliente })
+  }
+
+  function añadirLibre(event) {
+    event.preventDefault()
+    if (programando) return
+    const descripcion = descripcionLibre.trim()
+    const minutos = parsearDuracionLibre(duracionLibre)
+    if (!descripcion) { setErrorLibre('Escribe qué trabajo es.'); return }
+    if (minutos === null) { setErrorLibre('La duración debe ser como 1:30, 45 o 1,5h.'); return }
+    setErrorLibre('')
+    onElegir({ operacion: null, descripcion, minutos, cliente })
   }
 
   function alTeclear(event) {
@@ -90,10 +107,11 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Elegir trabajo del catálogo"
+      aria-label="Añadir trabajo a la agenda"
       style={{ left: pos.left, top: pos.top, width: ANCHO }}
       className="fixed z-[130] rounded-xl border border-antracita-600 bg-antracita-800 p-3 shadow-2xl"
     >
+      {titulo && <p className="mb-2 text-xs font-medium uppercase tracking-wide text-azul-300">{titulo}</p>}
       {pendiente ? (
         <div>
           <p className="text-sm text-slate-300">
@@ -101,13 +119,39 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {tiemposDe(pendiente).map((min, i) => (
-              <button key={i} type="button" disabled={programando} onClick={() => onElegir(pendiente, min)} className="btn-secondary">
+              <button key={i} type="button" disabled={programando} onClick={() => onElegir({ operacion: pendiente, minutos: min, cliente })} className="btn-secondary">
                 {`Tiempo ${i + 1}: ${formatearMinutos(min)}`}
               </button>
             ))}
           </div>
           <button type="button" onClick={() => setPendiente(null)} className="btn-ghost mt-2">Volver a la lista</button>
         </div>
+      ) : modo === 'libre' ? (
+        <form onSubmit={añadirLibre} className="space-y-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={descripcionLibre}
+            maxLength={200}
+            placeholder="¿Qué trabajo es?"
+            onChange={(event) => setDescripcionLibre(event.target.value)}
+            aria-label="Descripción del trabajo libre"
+            className="input"
+          />
+          <input
+            type="text"
+            value={duracionLibre}
+            onChange={(event) => setDuracionLibre(event.target.value)}
+            aria-label="Duración"
+            placeholder="Duración (1:30, 45 o 1,5h)"
+            className="input"
+          />
+          {errorLibre && <p role="alert" className="text-xs text-rose-300">{errorLibre}</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={programando} className="btn-primary">Añadir</button>
+            <button type="button" onClick={() => setModo('catalogo')} className="btn-ghost">Volver al catálogo</button>
+          </div>
+        </form>
       ) : (
         <>
           <input
@@ -120,7 +164,7 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
             aria-label="Filtrar trabajos"
             className="input"
           />
-          <div className="mt-2 max-h-72 overflow-auto">
+          <div className="mt-2 max-h-56 overflow-auto">
             {opciones.length === 0 && <p className="px-2 py-3 text-sm text-slate-400">Sin resultados.</p>}
             {grupos.map((grupo, gi) => (
               <div key={grupo.categoria}>
@@ -149,10 +193,14 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
               </div>
             ))}
           </div>
-          <p className="mt-2 text-xs text-slate-500">Escribe para filtrar; flechas para moverte, Enter para elegir, Escape para cerrar.</p>
+          <button type="button" onClick={() => setModo('libre')} className="btn-ghost mt-1 w-full justify-center">Otro trabajo (libre)…</button>
         </>
+      )}
+      {!pendiente && (
+        <div className="mt-3 border-t border-antracita-700 pt-3">
+          <ClienteCampo token={token} cliente={cliente} onChange={setCliente} />
+        </div>
       )}
     </div>
   )
 }
-

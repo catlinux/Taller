@@ -155,3 +155,95 @@ export function agruparCatalogo(operaciones, consulta = '') {
   if (grupos.has('Otros')) nombres.push('Otros')
   return nombres.map((categoria) => ({ categoria, operaciones: grupos.get(categoria) }))
 }
+
+// ── Línea de tiempo (agenda por mecánico) ─────────────────────────────────
+
+// Píxeles por minuto de la línea de tiempo.
+export const ESCALA_PX = 1.1
+
+// Redondea unos minutos de reloj al cuarto de hora más cercano.
+export function redondear15(minutos) {
+  return Math.round(minutos / 15) * 15
+}
+
+// Tramos «HH:MM» -> [{ ini, fin }] en minutos, ordenados (ignora los no válidos).
+function tramosEnMinutos(tramos) {
+  const lista = []
+  for (const tramo of Array.isArray(tramos) ? tramos : []) {
+    const ini = minutosDeHora(tramo?.inicio)
+    const fin = minutosDeHora(tramo?.fin)
+    if (ini !== null && fin !== null && fin > ini) lista.push({ ini, fin })
+  }
+  return lista.sort((a, b) => a.ini - b.ini)
+}
+
+// Trozos visuales de un bloque: un bloque de `minutos` de trabajo que empieza a
+// la hora de reloj `inicioMin` se parte donde hay una pausa del horario. Devuelve
+// [{ desde, hasta }] en minutos de reloj; un bloque sin pausas es un solo trozo.
+export function segmentosVisuales(tramos, inicioMin, minutos) {
+  const lista = tramosEnMinutos(tramos)
+  if (lista.length === 0) return [{ desde: inicioMin, hasta: inicioMin + minutos }]
+  const segmentos = []
+  let restante = minutos
+  let cursor = inicioMin
+  for (const { ini, fin } of lista) {
+    if (restante <= 0) break
+    if (cursor >= fin) continue
+    const desde = Math.max(cursor, ini)
+    const toma = Math.min(restante, fin - desde)
+    segmentos.push({ desde, hasta: desde + toma })
+    restante -= toma
+    cursor = desde + toma
+  }
+  // Más allá del último tramo (horario cambiado después de planificar): se dibuja seguido.
+  if (restante > 0) segmentos.push({ desde: cursor, hasta: cursor + restante })
+  return segmentos
+}
+
+// Rango de horas del eje común de la semana: de la hora entera más temprana
+// donde empieza algún tramo a la más tardía donde acaba, incluyendo también el
+// inicio y el fin de los bloques. { inicio, fin } en minutos; 09:00–17:00 si no hay datos.
+export function rangoHoras(dias) {
+  let minimo = Infinity
+  let maximo = -Infinity
+  for (const dia of Array.isArray(dias) ? dias : []) {
+    for (const { ini, fin } of tramosEnMinutos(dia?.tramos)) {
+      minimo = Math.min(minimo, ini)
+      maximo = Math.max(maximo, fin)
+    }
+    for (const bloque of dia?.bloques ?? []) {
+      const ini = minutosDeHora(bloque.inicio)
+      const fin = minutosDeHora(bloque.fin)
+      if (ini !== null) minimo = Math.min(minimo, ini)
+      if (fin !== null) maximo = Math.max(maximo, fin)
+    }
+  }
+  if (!Number.isFinite(minimo)) return { inicio: 9 * 60, fin: 17 * 60 }
+  return { inicio: Math.floor(minimo / 60) * 60, fin: Math.min(24 * 60, Math.ceil(maximo / 60) * 60) }
+}
+
+// Hora de reloj (múltiplo de 15) para un clic a `y` píxeles del inicio del eje,
+// o null si cae en una pausa o fuera del horario del día.
+export function horaDeClic(tramos, inicioEje, y, escala = ESCALA_PX) {
+  const minuto = inicioEje + y / escala
+  const redondeado = redondear15(minuto)
+  for (const { ini, fin } of tramosEnMinutos(tramos)) {
+    if (minuto >= ini && minuto < fin) return Math.min(redondeado, fin - 15) < ini ? ini : Math.min(redondeado, fin - 15)
+  }
+  return null
+}
+
+// Zonas fuera de horario de un día dentro del eje: [{ desde, hasta }] en minutos
+// de reloj (los huecos entre tramos y los extremos), para dibujarlas rayadas.
+export function zonasFueraDeHorario(tramos, inicioEje, finEje) {
+  const lista = tramosEnMinutos(tramos)
+  if (lista.length === 0) return [{ desde: inicioEje, hasta: finEje }]
+  const zonas = []
+  let cursor = inicioEje
+  for (const { ini, fin } of lista) {
+    if (ini > cursor) zonas.push({ desde: cursor, hasta: Math.min(ini, finEje) })
+    cursor = Math.max(cursor, fin)
+  }
+  if (cursor < finEje) zonas.push({ desde: cursor, hasta: finEje })
+  return zonas.filter((z) => z.hasta > z.desde)
+}

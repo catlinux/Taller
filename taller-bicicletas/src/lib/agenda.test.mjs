@@ -9,6 +9,11 @@ import {
   minutosTramos,
   estadoOcupacion,
   agruparCatalogo,
+  segmentosVisuales,
+  rangoHoras,
+  horaDeClic,
+  zonasFueraDeHorario,
+  ESCALA_PX,
 } from './agenda.js'
 
 // Pruebas de las utilidades puras de la agenda (unión de horas, etiqueta de la
@@ -111,4 +116,40 @@ test('agruparCatalogo filtra sin distinguir mayúsculas ni tildes', () => {
   assert.deepEqual(porNombre.flatMap((g) => g.operaciones).map((o) => o.codigo), ['DIR-01'])
   const porCodigo = agruparCatalogo(catalogo, 'tra-01')
   assert.deepEqual(porCodigo.flatMap((g) => g.operaciones).map((o) => o.codigo), ['TRA-01'])
+})
+
+test('segmentosVisuales: un bloque sin pausas es un solo trozo y uno que cruza la pausa se parte', () => {
+  const tramos = [{ inicio: '09:00', fin: '13:00' }, { inicio: '15:00', fin: '17:00' }]
+  assert.deepEqual(segmentosVisuales(tramos, 540, 60), [{ desde: 540, hasta: 600 }])
+  assert.deepEqual(segmentosVisuales(tramos, 750, 60), [{ desde: 750, hasta: 780 }, { desde: 900, hasta: 930 }])
+  assert.deepEqual(segmentosVisuales(tramos, 780, 30), [{ desde: 900, hasta: 930 }])
+  assert.deepEqual(segmentosVisuales([{ inicio: '09:00', fin: '10:00' }], 570, 60), [{ desde: 570, hasta: 600 }, { desde: 600, hasta: 630 }])
+  assert.deepEqual(segmentosVisuales([], 540, 30), [{ desde: 540, hasta: 570 }])
+})
+
+test('rangoHoras une los horarios de la semana y los bloques', () => {
+  const dias = [
+    { tramos: [{ inicio: '09:00', fin: '13:30' }], bloques: [] },
+    { tramos: [{ inicio: '10:00', fin: '17:00' }], bloques: [{ inicio: '08:30', fin: '09:15' }] },
+  ]
+  assert.deepEqual(rangoHoras(dias), { inicio: 480, fin: 1020 })
+  assert.deepEqual(rangoHoras([]), { inicio: 540, fin: 1020 })
+})
+
+test('horaDeClic redondea a 15 minutos y devuelve null en pausas o fuera de horario', () => {
+  const tramos = [{ inicio: '09:00', fin: '13:00' }, { inicio: '15:00', fin: '17:00' }]
+  const y = (minuto) => (minuto - 540) * ESCALA_PX
+  assert.equal(horaDeClic(tramos, 540, y(547)), 540)
+  assert.equal(horaDeClic(tramos, 540, y(553)), 555)
+  assert.equal(horaDeClic(tramos, 540, y(840)), null)
+  assert.equal(horaDeClic(tramos, 540, y(1030)), null)
+  assert.equal(horaDeClic(tramos, 540, y(779)), 765)
+})
+
+test('zonasFueraDeHorario devuelve los extremos y las pausas del eje', () => {
+  const tramos = [{ inicio: '09:30', fin: '13:00' }, { inicio: '15:00', fin: '16:00' }]
+  assert.deepEqual(zonasFueraDeHorario(tramos, 540, 1080), [
+    { desde: 540, hasta: 570 }, { desde: 780, hasta: 900 }, { desde: 960, hasta: 1080 },
+  ])
+  assert.deepEqual(zonasFueraDeHorario([], 540, 600), [{ desde: 540, hasta: 600 }])
 })

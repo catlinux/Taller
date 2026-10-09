@@ -1,13 +1,15 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api.js'
 import { formatearMinutos } from '../lib/tiempos.js'
-import { etiquetaSemana, horasUnion, estadoOcupacion } from '../lib/agenda.js'
+import { ESCALA_PX, estadoOcupacion, etiquetaSemana, horaDeMinutos, minutosDeHora, rangoHoras, redondear15 } from '../lib/agenda.js'
 import SelectorTrabajo from '../components/agenda/SelectorTrabajo.jsx'
-import TarjetaTrabajo from '../components/agenda/TarjetaTrabajo.jsx'
+import ColumnaDia, { minutoDeEvento } from '../components/agenda/ColumnaDia.jsx'
 import AjusteDiaModal from '../components/agenda/AjusteDiaModal.jsx'
+import ModalDesborde from '../components/agenda/ModalDesborde.jsx'
+import ModalTrabajo from '../components/agenda/ModalTrabajo.jsx'
 
 // Fecha de hoy en formato AAAA-MM-DD usando la hora local (para «Hoy» y por
 // defecto cuando la URL no trae semana).
@@ -18,6 +20,12 @@ function hoyISO() {
   return `${ahora.getFullYear()}-${mes}-${dia}`
 }
 
+// Minutos de reloj de la hora actual.
+function minutoActual() {
+  const ahora = new Date()
+  return ahora.getHours() * 60 + ahora.getMinutes()
+}
+
 // «AAAA-MM-DD» -> «D/M» para el encabezado de cada día.
 function fechaCorta(fecha) {
   const [anio, mes, dia] = String(fecha).split('-')
@@ -25,89 +33,13 @@ function fechaCorta(fecha) {
   return `${Number(dia)}/${Number(mes)}`
 }
 
-// ¿La hora indicada es una franja del día? (filas de la rejilla de ese día).
-function esFranja(dia, hora) {
-  return (dia.franjas || []).some((franja) => franja.hora === hora)
-}
-
-// Minutos de la franja (capacidad de esa hora) o null si la hora no es franja.
-function franjaMinutos(dia, hora) {
-  const franja = (dia.franjas || []).find((f) => f.hora === hora)
-  return franja ? franja.minutos : null
-}
-
-// Trabajos programados en una hora concreta de un día.
-function trabajosEnCelda(dia, hora) {
-  return (dia.trabajos || []).filter((trabajo) => trabajo.hora === hora)
-}
-
-// Trabajos del día cuyo id figura en fueraDeHorario (su hora ya no es franja).
-function trabajosFuera(dia) {
-  const ids = new Set(dia.fueraDeHorario || [])
-  return (dia.trabajos || []).filter((trabajo) => ids.has(trabajo.id))
-}
-
 // Colores de la barra y el texto de ocupación (normal / casi / excedido).
 const BARRA_OCUPACION = { normal: 'bg-emerald-500', casi: 'bg-naranja-500', excedido: 'bg-rose-500' }
 const TEXTO_OCUPACION = { normal: 'text-emerald-300', casi: 'text-naranja-300', excedido: 'text-rose-300' }
 
-// Modal para mover un trabajo sin ratón: elige día y hora entre las franjas
-// válidas de la semana.
-function ModalMover({ trabajo, dias, onMover, onCerrar }) {
-  return (
-    <div
-      className="fixed inset-0 z-[120] grid place-items-center overflow-y-auto bg-black/70 p-4"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) onCerrar() }}
-    >
-      <section role="dialog" aria-modal="true" aria-labelledby="mover-trabajo-title" className="my-auto w-full max-w-md rounded-2xl border border-antracita-700 bg-antracita-800 p-6 shadow-2xl">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 id="mover-trabajo-title" className="text-lg font-semibold">Mover trabajo</h2>
-            <p className="mt-1 text-sm text-slate-400">{trabajo.descripcion}</p>
-          </div>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="rounded-lg px-3 py-2 text-slate-400 hover:bg-antracita-700 hover:text-white">×</button>
-        </div>
-        <div className="space-y-4">
-          {dias.map((dia) => {
-            const franjas = dia.franjas || []
-            return (
-              <div key={dia.fecha}>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{dia.nombre} · {fechaCorta(dia.fecha)}</p>
-                {franjas.length === 0
-                  ? <p className="mt-1 text-xs text-slate-600">Sin horario</p>
-                  : (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {franjas.map((franja) => {
-                        const actual = dia.fecha === trabajo.fecha && franja.hora === trabajo.hora
-                        return (
-                          <button
-                            key={franja.hora}
-                            type="button"
-                            disabled={actual}
-                            onClick={() => onMover(dia.fecha, franja.hora)}
-                            title={actual ? 'Ya está en esta hora' : `Mover a ${dia.nombre} ${franja.hora}`}
-                            className="rounded-md border border-antracita-600 px-2.5 py-1 text-sm text-slate-200 hover:bg-antracita-700 disabled:opacity-40"
-                          >
-                            {franja.hora}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-              </div>
-            )
-          })}
-        </div>
-        <div className="mt-5 flex justify-end border-t border-antracita-700 pt-4">
-          <button type="button" onClick={onCerrar} className="btn-ghost">Cancelar</button>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-// Página Agenda: planificación semanal (lunes a viernes) de trabajos del
-// catálogo, con navegación de semanas, ocupación por día y ajuste de días.
+// Página Agenda: planificación semanal (lunes a viernes) por mecánico en una
+// línea de tiempo. Un clic en una zona libre añade un trabajo, un bloque se
+// arrastra a otra hora u otro día y al pulsarlo se abre su detalle.
 export default function Agenda() {
   const { token, user } = useAuth()
   const esAdmin = user?.rol === 'admin'
@@ -115,40 +47,46 @@ export default function Agenda() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [selector, setSelector] = useState(null)
-  const [arrastrando, setArrastrando] = useState(null)
-  const [zonaDestino, setZonaDestino] = useState('')
-  const [moviendo, setMoviendo] = useState(null)
+  const [abierto, setAbierto] = useState(null)
+  const [decision, setDecision] = useState(null)
+  const [destino, setDestino] = useState(null)
   const [diaAjustando, setDiaAjustando] = useState(null)
   const [errorAjuste, setErrorAjuste] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
+  const [errorModal, setErrorModal] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [ahora, setAhora] = useState(minutoActual)
   const anclaRef = useRef(null)
+  const arrastre = useRef(null)
 
   const fechaParam = searchParams.get('semana') || hoyISO()
 
+  const { data: mecanicos = [], isSuccess: mecanicosCargados } = useQuery(['mecanicos'], () => apiGet('/api/mecanicos', token), { enabled: Boolean(token) })
+  const mecanicoParam = searchParams.get('mecanico')
+  // «sin» = Sin asignar; sin parámetro, el primer mecánico (o Sin asignar si no hay).
+  const mecanicoSel = mecanicoParam || (mecanicos.length > 0 ? String(mecanicos[0].id) : 'sin')
+  const mecanicoId = mecanicoSel === 'sin' ? null : Number(mecanicoSel)
+
   const { data, isLoading, error } = useQuery(
-    ['agenda', 'semana', fechaParam],
-    () => apiGet(`/api/agenda/semana?fecha=${fechaParam}`, token),
-    { enabled: Boolean(token) },
+    ['agenda', 'semana', fechaParam, mecanicoSel],
+    () => apiGet(`/api/agenda/semana?fecha=${fechaParam}&mecanico=${mecanicoSel}`, token),
+    { enabled: Boolean(token) && (Boolean(mecanicoParam) || mecanicosCargados), keepPreviousData: true },
   )
   const invalidar = () => queryClient.invalidateQueries(['agenda', 'semana'])
 
-  // Catálogo (solo cuando hay un selector abierto); comparte caché con la página
-  // de Operaciones porque usa la misma clave.
+  // Catálogo (solo cuando hay un selector abierto); comparte caché con la página de Operaciones.
   const { data: operaciones = [] } = useQuery(
     ['operaciones', false],
     () => apiGet('/api/operaciones', token),
     { enabled: Boolean(token) && Boolean(selector) },
   )
 
-  const crear = useMutation((datos) => apiPost('/api/agenda/trabajos', token, datos), {
-    onSuccess: invalidar, onError: (e) => setErrorAccion(e.message),
-  })
-  const actualizar = useMutation(({ id, datos }) => apiPut(`/api/agenda/trabajos/${id}`, token, datos), {
-    onSuccess: invalidar, onError: (e) => setErrorAccion(e.message),
-  })
-  const eliminar = useMutation((id) => apiDelete(`/api/agenda/trabajos/${id}`, token), {
-    onSuccess: invalidar, onError: (e) => setErrorAccion(e.message),
-  })
+  // Refresca la línea de «ahora» cada minuto.
+  useEffect(() => {
+    const temporizador = setInterval(() => setAhora(minutoActual()), 60 * 1000)
+    return () => clearInterval(temporizador)
+  }, [])
+
   const guardarDia = useMutation(({ fecha, cuerpo }) => apiPut(`/api/agenda/dias/${fecha}`, token, cuerpo), {
     onSuccess: () => { invalidar(); setDiaAjustando(null); setErrorAjuste('') },
     onError: (e) => setErrorAjuste(e.message),
@@ -160,40 +98,113 @@ export default function Agenda() {
 
   const dias = data?.dias ?? []
   const config = data?.config ?? { tramos: [], horasMaximas: 0 }
-  const horas = useMemo(() => horasUnion(dias), [dias])
+  const rango = useMemo(() => rangoHoras(dias), [dias])
+  const horasEje = useMemo(() => {
+    const horas = []
+    for (let minuto = rango.inicio; minuto <= rango.fin; minuto += 60) horas.push(minuto)
+    return horas
+  }, [rango])
+  const altoEje = (rango.fin - rango.inicio) * ESCALA_PX
 
-  function irASemana(fecha) {
-    setSearchParams({ semana: fecha })
+  function actualizarUrl(cambios) {
+    const siguiente = new URLSearchParams(searchParams)
+    for (const [clave, valor] of Object.entries(cambios)) {
+      if (valor === null || valor === undefined) siguiente.delete(clave)
+      else siguiente.set(clave, valor)
+    }
+    setSearchParams(siguiente)
   }
-  function abrirSelector(fecha, hora, elemento) {
-    anclaRef.current = elemento
-    setErrorAccion('')
-    setSelector({ fecha, hora })
-  }
-  function handleDragOver(fecha, hora) {
-    return (event) => {
-      if (!arrastrando) return
-      event.preventDefault()
-      event.dataTransfer.dropEffect = 'move'
-      setZonaDestino(`${fecha}|${hora}`)
+  const irASemana = (fecha) => actualizarUrl({ semana: fecha })
+  const elegirMecanico = (valor) => actualizarUrl({ mecanico: valor })
+
+  // Lanza una petición que puede pedir una decisión de desborde (409): si la pide,
+  // abre el modal y la repite con el desborde elegido.
+  async function lanzar(accion, alExito) {
+    setEnviando(true)
+    try {
+      await accion(undefined)
+      invalidar()
+      setDecision(null)
+      alExito?.()
+    } catch (e) {
+      if (e.status === 409 && e.data?.requiereDecision === true) {
+        setDecision({ excesoMin: e.data.excesoMin, accion, alExito })
+      } else if (abierto) {
+        setErrorModal(e.message)
+      } else {
+        setErrorAccion(e.message)
+        setDecision(null)
+      }
+    } finally {
+      setEnviando(false)
     }
   }
-  function soltar(fecha, hora) {
-    const trabajo = arrastrando
-    setArrastrando(null)
-    setZonaDestino('')
-    if (!trabajo || (trabajo.fecha === fecha && trabajo.hora === hora)) return
-    actualizar.mutate({ id: trabajo.id, datos: { fecha, hora } })
+
+  function crearTrabajo({ operacion, descripcion, minutos, cliente }) {
+    const { dia, minuto } = selector
+    const cuerpo = { mecanicoId, fecha: dia.fecha, inicio: horaDeMinutos(minuto), minutos, clienteId: cliente?.id }
+    if (operacion) cuerpo.operacionId = operacion.id
+    else cuerpo.descripcion = descripcion
+    lanzar((desborde) => apiPost('/api/agenda/trabajos', token, { ...cuerpo, desborde }), () => setSelector(null))
   }
-  function moverATrabajo(fecha, hora) {
-    const trabajo = moviendo
-    setMoviendo(null)
-    if (!trabajo) return
-    actualizar.mutate({ id: trabajo.id, datos: { fecha, hora } })
+
+  function moverTrabajo(trabajoId, cambios, alExito) {
+    lanzar((desborde) => apiPut(`/api/agenda/trabajos/${trabajoId}`, token, { ...cambios, desborde }), alExito)
   }
-  function quitarTrabajo(trabajo) {
-    if (!window.confirm(`¿Quitar «${trabajo.descripcion}» de la agenda?`)) return
-    eliminar.mutate(trabajo.id)
+
+  function quitarTrabajo(bloque) {
+    if (!window.confirm(`¿Quitar «${bloque.trabajo.descripcion}» de la agenda?`)) return
+    lanzar(() => apiDelete(`/api/agenda/trabajos/${bloque.trabajoId}`, token), () => setAbierto(null))
+  }
+
+  function abrirSelector(dia, minuto, evento) {
+    const x = evento?.clientX ?? 16
+    const y = evento?.clientY ?? 120
+    anclaRef.current = { getBoundingClientRect: () => ({ left: x, top: y, bottom: y }) }
+    setErrorAccion('')
+    setSelector({ dia, minuto })
+  }
+
+  // En móvil no hay clic sobre la línea de tiempo: «Añadir» entra al final del día.
+  function añadirAlFinal(dia, evento) {
+    const ultimo = dia.bloques.reduce((fin, b) => Math.max(fin, minutosDeHora(b.fin) ?? 0), 0)
+    const primerTramo = dia.tramos[0] ? minutosDeHora(dia.tramos[0].inicio) : 9 * 60
+    const minuto = ultimo > 0 ? Math.min(redondear15(ultimo + 7), 23 * 60 + 45) : primerTramo
+    abrirSelector(dia, minuto, evento)
+  }
+
+  function alIniciarArrastre(bloque, event) {
+    const columna = event.currentTarget.parentElement
+    const agarre = minutoDeEvento(event, columna, rango.inicio)
+    arrastre.current = { bloque, desfase: agarre - minutosDeHora(bloque.inicio) }
+  }
+  function alTerminarArrastre() {
+    arrastre.current = null
+    setDestino(null)
+  }
+  // Minuto (redondeado a 15) donde empezaría el bloque arrastrado si se soltara aquí.
+  function minutoDeSoltado(event) {
+    const actual = arrastre.current
+    if (!actual) return null
+    const minuto = minutoDeEvento(event, event.currentTarget, rango.inicio) - actual.desfase
+    return Math.max(0, Math.min(23 * 60 + 45, redondear15(minuto)))
+  }
+  function alSobrevolar(dia, event) {
+    if (!arrastre.current) return
+    if (dia.cierre) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    const minuto = minutoDeSoltado(event)
+    setDestino((previo) => (previo?.fecha === dia.fecha && previo.minuto === minuto ? previo : { fecha: dia.fecha, minuto }))
+  }
+  function alSoltar(dia, event) {
+    const actual = arrastre.current
+    const minuto = minutoDeSoltado(event)
+    alTerminarArrastre()
+    if (!actual || minuto === null || dia.cierre) return
+    const inicio = horaDeMinutos(minuto)
+    if (dia.fecha === actual.bloque.fechaDia && inicio === actual.bloque.inicio) return
+    moverTrabajo(actual.bloque.trabajoId, { fecha: dia.fecha, inicio })
   }
 
   // Encabezado de un día: nombre, fecha, ocupación y botón de ajuste (admin).
@@ -229,88 +240,30 @@ export default function Agenda() {
     )
   }
 
-  // Contenido de una celda: tarjetas de sus trabajos y el botón «+».
-  function renderContenidoCelda(dia, hora) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        {trabajosEnCelda(dia, hora).map((trabajo) => (
-          <TarjetaTrabajo
-            key={trabajo.id}
-            trabajo={trabajo}
-            arrastrable
-            seleccionado={arrastrando?.id === trabajo.id}
-            onArrastrarInicio={() => setArrastrando(trabajo)}
-            onArrastrarFin={() => { setArrastrando(null); setZonaDestino('') }}
-            onCambiarMinutos={(tr, minutos) => actualizar.mutate({ id: tr.id, datos: { minutos } })}
-            onPedirMover={(tr) => setMoviendo(tr)}
-            onQuitar={quitarTrabajo}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={(event) => abrirSelector(dia.fecha, hora, event.currentTarget)}
-          aria-label={`Añadir trabajo el ${dia.nombre} a las ${hora}`}
-          className="rounded-md border border-dashed border-antracita-600 py-1 text-xs text-slate-500 hover:border-azul-500 hover:text-azul-300"
-        >
-          + Añadir
-        </button>
-      </div>
-    )
+  const abrirBloque = (dia) => (bloque) => {
+    setErrorModal('')
+    setAbierto({ bloque: { ...bloque, fechaDia: dia.fecha }, fecha: dia.fecha })
   }
-
-  // Celda de la rejilla: franja con trabajos, o zona sombreada «Fuera de horario».
-  function renderCelda(dia, hora) {
-    if (!esFranja(dia, hora)) {
-      return <div className="h-full min-h-[3.25rem] rounded-lg border border-dashed border-antracita-800 bg-antracita-900/30" aria-hidden="true" />
-    }
-    const cap = franjaMinutos(dia, hora)
-    const porFranja = dia.porFranja?.[hora] ?? 0
-    const sobrecargada = cap != null && porFranja > cap
-    const activa = zonaDestino === `${dia.fecha}|${hora}`
-    return (
-      <div
-        onDragOver={handleDragOver(dia.fecha, hora)}
-        onDrop={(event) => { event.preventDefault(); soltar(dia.fecha, hora) }}
-        className={`h-full min-h-[3.25rem] rounded-lg border p-1.5 ${activa ? 'border-azul-400 bg-azul-500/10' : 'border-antracita-700'} ${sobrecargada ? 'border-naranja-500/70' : ''}`}
-        title={sobrecargada ? 'Esta hora tiene más trabajo del que cabe' : undefined}
-      >
-        {renderContenidoCelda(dia, hora)}
-      </div>
-    )
-  }
-
-  // Caja «Fuera de horario» al pie de un día, con sus tarjetas.
-  function renderFuera(dia) {
-    const fuera = trabajosFuera(dia)
-    if (fuera.length === 0) return null
-    return (
-      <div className="mt-3 rounded-lg border border-naranja-500/30 bg-naranja-500/5 p-2">
-        <p className="px-1 text-xs font-medium text-naranja-300">Fuera de horario ({fuera.length})</p>
-        <div className="mt-1.5 flex flex-col gap-1.5">
-          {fuera.map((trabajo) => (
-            <TarjetaTrabajo
-              key={trabajo.id}
-              trabajo={trabajo}
-              arrastrable
-              seleccionado={arrastrando?.id === trabajo.id}
-              onArrastrarInicio={() => setArrastrando(trabajo)}
-              onArrastrarFin={() => { setArrastrando(null); setZonaDestino('') }}
-              onCambiarMinutos={(tr, minutos) => actualizar.mutate({ id: tr.id, datos: { minutos } })}
-              onPedirMover={(tr) => setMoviendo(tr)}
-              onQuitar={quitarTrabajo}
-            />
-          ))}
-        </div>
-      </div>
-    )
-  }
+  // Los bloques llevan su fecha para comparar al soltar sobre el mismo sitio.
+  const diasConFecha = dias.map((dia) => ({ ...dia, bloques: dia.bloques.map((b) => ({ ...b, fechaDia: dia.fecha })) }))
 
   return (
     <div>
       <div className="mb-6">
         <p className="text-sm text-azul-300">Planificación</p>
         <h1 className="mt-1 text-3xl font-bold">Agenda</h1>
-        <p className="mt-2 text-slate-400">Programa los trabajos de la semana.</p>
+        <p className="mt-2 text-slate-400">Programa los trabajos de la semana de cada mecánico.</p>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Agenda de">
+        {mecanicos.map((m) => (
+          <button key={m.id} type="button" role="tab" aria-selected={mecanicoSel === String(m.id)} onClick={() => elegirMecanico(String(m.id))} className={mecanicoSel === String(m.id) ? 'btn-primary' : 'btn-secondary'}>
+            {m.nombre}
+          </button>
+        ))}
+        <button type="button" role="tab" aria-selected={mecanicoSel === 'sin'} onClick={() => elegirMecanico('sin')} className={mecanicoSel === 'sin' ? 'btn-primary' : 'btn-secondary'}>
+          Sin asignar
+        </button>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -327,58 +280,63 @@ export default function Agenda() {
 
       {data && (
         <>
-          {/* table-fixed + colgroup: los días se reparten el ancho a partes iguales y
-              las descripciones largas se recortan en vez de ensanchar la página. */}
-          <table className="hidden w-full table-fixed border-separate lg:table" style={{ borderSpacing: '0.5rem' }}>
-            <colgroup>
-              <col style={{ width: '3.5rem' }} />
-              {dias.map((dia) => <col key={dia.fecha} />)}
-            </colgroup>
-            <thead>
-              <tr>
-                <td aria-hidden="true" />
-                {dias.map((dia) => (
-                  <th key={dia.fecha} scope="col" className="p-0 align-top text-left font-normal">{renderCabecera(dia)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {horas.map((hora) => (
-                <tr key={hora}>
-                  <th scope="row" className="w-16 pr-1 text-right align-top text-xs font-medium text-slate-500">{hora}</th>
-                  {dias.map((dia) => (
-                    <td key={`${dia.fecha}-${hora}`} className="p-0 align-top">{renderCelda(dia, hora)}</td>
-                  ))}
-                </tr>
+          <div className="hidden gap-2 lg:grid" style={{ gridTemplateColumns: '3rem repeat(5, minmax(0, 1fr))' }}>
+            <div aria-hidden="true" />
+            {diasConFecha.map((dia) => <div key={dia.fecha}>{renderCabecera(dia)}</div>)}
+
+            <div className="relative" style={{ height: altoEje }} aria-hidden="true">
+              {horasEje.map((minuto) => (
+                <span key={minuto} style={{ top: (minuto - rango.inicio) * ESCALA_PX - 7 }} className="absolute right-1 text-xs font-medium text-slate-500">
+                  {horaDeMinutos(minuto)}
+                </span>
               ))}
-              {dias.some((dia) => (dia.fueraDeHorario || []).length > 0) && (
-                <tr>
-                  <th scope="row" className="align-top" aria-hidden="true" />
-                  {dias.map((dia) => <td key={dia.fecha} className="p-0 align-top">{renderFuera(dia)}</td>)}
-                </tr>
-              )}
-            </tbody>
-          </table>
+            </div>
+            {diasConFecha.map((dia) => (
+              <ColumnaDia
+                key={dia.fecha}
+                dia={dia}
+                inicioEje={rango.inicio}
+                finEje={rango.fin}
+                ahora={dia.esHoy ? ahora : null}
+                destino={destino?.fecha === dia.fecha ? destino.minuto : null}
+                onClicLibre={(d, minuto, evento) => abrirSelector(d, minuto, evento)}
+                onSobrevolar={alSobrevolar}
+                onSoltar={alSoltar}
+                onAbrir={abrirBloque(dia)}
+                onArrastrarInicio={alIniciarArrastre}
+                onArrastrarFin={alTerminarArrastre}
+              />
+            ))}
+          </div>
 
           <div className="space-y-5 lg:hidden">
-            {dias.map((dia) => (
+            {diasConFecha.map((dia) => (
               <section key={dia.fecha} className="card p-3">
                 {renderCabecera(dia)}
-                <div className="mt-3 space-y-2">
-                  {horas.filter((hora) => esFranja(dia, hora)).map((hora) => (
-                    <div key={hora} className="flex gap-2">
-                      <div className="w-12 shrink-0 pt-1 text-xs font-medium text-slate-500">{hora}</div>
-                      <div
-                        className="min-w-0 flex-1"
-                        onDragOver={handleDragOver(dia.fecha, hora)}
-                        onDrop={(event) => { event.preventDefault(); soltar(dia.fecha, hora) }}
+                <ul className="mt-3 space-y-2">
+                  {dia.bloques.length === 0 && <li className="text-sm text-slate-500">Sin trabajos.</li>}
+                  {dia.bloques.map((bloque) => (
+                    <li key={bloque.id}>
+                      <button
+                        type="button"
+                        onClick={() => abrirBloque(dia)(bloque)}
+                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${bloque.trabajo.orden ? 'bg-azul-500/20' : 'bg-antracita-700/60'} ${bloque.forzado ? 'border-rose-500' : 'border-antracita-600'}`}
                       >
-                        {renderContenidoCelda(dia, hora)}
-                      </div>
-                    </div>
+                        <span className="font-medium text-white">{bloque.inicio}–{bloque.fin}</span>
+                        <span className="ml-2 text-slate-200">{bloque.trabajo.descripcion}</span>
+                        {bloque.partes > 1 && <span className="ml-1 text-xs text-slate-400">{bloque.parte}/{bloque.partes}</span>}
+                        <span className="block text-xs text-slate-400">
+                          {formatearMinutos(bloque.minutos)}
+                          {bloque.trabajo.cliente ? ` · ${bloque.trabajo.cliente.nombreCorto}` : ''}
+                          {bloque.trabajo.orden ? ` · ${bloque.trabajo.orden.numeroOrden}` : ''}
+                        </span>
+                      </button>
+                    </li>
                   ))}
-                </div>
-                {renderFuera(dia)}
+                </ul>
+                {!dia.cierre && (
+                  <button type="button" onClick={(event) => añadirAlFinal(dia, event)} className="btn-secondary mt-3 w-full justify-center">+ Añadir trabajo</button>
+                )}
               </section>
             ))}
           </div>
@@ -388,20 +346,37 @@ export default function Agenda() {
       {selector && (
         <SelectorTrabajo
           anclaRef={anclaRef}
+          titulo={`${selector.dia.nombre} ${fechaCorta(selector.dia.fecha)} · ${horaDeMinutos(selector.minuto)}${data?.mecanico ? ` · ${data.mecanico.nombre}` : ' · Sin asignar'}`}
           operaciones={operaciones}
-          programando={crear.isLoading}
-          onElegir={(operacion, minutos) => {
-            crear.mutate(
-              { fecha: selector.fecha, hora: selector.hora, operacionId: operacion.id, minutos },
-              { onSuccess: () => setSelector(null) },
-            )
-          }}
+          token={token}
+          programando={enviando}
+          onElegir={crearTrabajo}
           onCerrar={() => setSelector(null)}
         />
       )}
 
-      {moviendo && (
-        <ModalMover trabajo={moviendo} dias={dias} onMover={moverATrabajo} onCerrar={() => setMoviendo(null)} />
+      {abierto && (
+        <ModalTrabajo
+          bloque={abierto.bloque}
+          fecha={abierto.fecha}
+          mecanicos={mecanicos}
+          token={token}
+          guardando={enviando}
+          error={errorModal}
+          onGuardar={(cambios) => moverTrabajo(abierto.bloque.trabajoId, cambios, () => setAbierto(null))}
+          onQuitar={() => quitarTrabajo(abierto.bloque)}
+          onCerrar={() => setAbierto(null)}
+        />
+      )}
+
+      {decision && (
+        <ModalDesborde
+          excesoMin={decision.excesoMin}
+          enviando={enviando}
+          onForzar={() => lanzar(() => decision.accion('forzar'), decision.alExito)}
+          onSiguiente={() => lanzar(() => decision.accion('siguiente'), decision.alExito)}
+          onCancelar={() => setDecision(null)}
+        />
       )}
 
       {diaAjustando && (
@@ -418,5 +393,3 @@ export default function Agenda() {
     </div>
   )
 }
-
-
