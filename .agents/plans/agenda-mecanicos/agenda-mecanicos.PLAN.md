@@ -157,7 +157,7 @@ Tras cada ejecución, el orquestador comprueba `git log`, `git branch -a`, `git 
 - **Terminado cuando**: VAR-06 y VAR-01 se programan con cada uno de sus tiempos (captura), con prueba de la causa si es lógica pura, y `npm test` y `npm run build` en verde.
 - **Ejecutor**: AgentRelay, esfuerzo medio. Si no se reproduce en local, se pide al usuario el mensaje de error que ve.
 
-### [ ] Paso 2: modelo de datos y planificador puro (sin publicar)
+### [x] Paso 2: modelo de datos y planificador puro (sin publicar)
 
 - **Archivos**:
   - `prisma/schema.prisma`

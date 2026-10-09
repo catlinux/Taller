@@ -50,11 +50,14 @@ model Mecanico {
   id            Int       @id @default(autoincrement())
   nombre        String    @unique
   activo        Boolean   @default(true)
+  agendaTramos  String?   // JSON [{inicio,fin}] propio en la agenda; null = el del taller
+  agendaHorasMaximas Float? // null = las del taller
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Relaciones
   ordenes       OrdenReparacion[]
+  agendaTrabajos AgendaTrabajo[]
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -88,6 +91,7 @@ model Cliente {
   // Relaciones
   bicicletas    Bicicleta[]
   ordenes       OrdenReparacion[]
+  agendaTrabajos AgendaTrabajo[]
 
   @@index([nombre])
   @@index([numeroCliente])
@@ -191,6 +195,7 @@ model OrdenReparacion {
   mecanico          Mecanico? @relation(fields: [mecanicoId], references: [id], onDelete: Restrict)
   materiales        OrdenMaterial[]
   manoObra          OrdenManoObra[]
+  agendaTrabajos    AgendaTrabajo[]
 
   @@index([numeroOrden])
   @@index([clienteId])
@@ -236,6 +241,7 @@ model OrdenManoObra {
 
   // Relaciones
   orden         OrdenReparacion @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  agendaTrabajos AgendaTrabajo[]
 
   @@index([ordenId])
 }
@@ -264,31 +270,62 @@ model OperacionManoObra {
 // ═══════════════════════════════════════════════════════════════
 model AgendaTrabajo {
   id            Int      @id @default(autoincrement())
-  fecha         String   // Día laborable «AAAA-MM-DD»
-  hora          String   // Inicio de la fila «HH:MM»
+  fecha         String   @default("") // OBSOLETO: las fechas reales están en AgendaBloque
+  hora          String   @default("") // OBSOLETO: el inicio real está en AgendaBloque
   operacionId   Int?
   codigo        String?
   descripcion   String
   categoria     String?
   tiempos       String?  // Copia JSON de los tiempos alternativos (minutos) al programar
-  minutos       Int      // Duración elegida
+  minutos       Int      // Duración total (suma de los minutos de sus bloques)
   nota          String?
-  posicion      Int      @default(0) // Orden dentro de la misma hora
+  posicion      Int      @default(0) // OBSOLETO: el orden lo da el inicio de los bloques
+  mecanicoId    Int?     // null = «Sin asignar»
+  clienteId     Int?
+  ordenId       Int?
+  ordenManoObraId Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   // Relaciones
   operacion     OperacionManoObra? @relation(fields: [operacionId], references: [id], onDelete: SetNull)
+  mecanico      Mecanico?          @relation(fields: [mecanicoId], references: [id], onDelete: SetNull)
+  cliente       Cliente?           @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  orden         OrdenReparacion?   @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  ordenManoObra OrdenManoObra?     @relation(fields: [ordenManoObraId], references: [id], onDelete: Cascade)
+  bloques       AgendaBloque[]
 
   @@index([fecha])
+  @@index([mecanicoId])
+  @@index([ordenId])
 }
 
-// Personalización de un día concreto (horario y horas máximas propios). Si no
-// hay fila para una fecha, se usan los valores predeterminados generales.
+// Trozo de un trabajo dentro de un día (un trabajo partido entre días tiene uno
+// por día). `inicio` es la hora del reloj en minutos desde medianoche y
+// `minutos` son minutos de trabajo: no cuentan las pausas del horario.
+model AgendaBloque {
+  id            Int      @id @default(autoincrement())
+  trabajoId     Int
+  fecha         String   // «AAAA-MM-DD»
+  inicio        Int
+  minutos       Int
+  forzado       Boolean  @default(false) // Se quedó en el día aunque pase de la capacidad
+
+  trabajo       AgendaTrabajo @relation(fields: [trabajoId], references: [id], onDelete: Cascade)
+
+  @@index([fecha])
+  @@index([trabajoId])
+}
+
+// Personalización de un día concreto (horario, horas máximas y cierre propios,
+// comunes a todos los mecánicos). Si no hay fila para una fecha, se usan los
+// valores predeterminados.
 model AgendaDia {
   fecha         String   @id // «AAAA-MM-DD»
   tramos        String?  // JSON [{inicio,fin}] propio del día; null = predeterminado
   horasMaximas  Float?   // null = predeterminado
+  cierre        String?  // 'festivo' | 'vacaciones'; null = abierto
+  motivo        String?  // p. ej. «Fiesta mayor»
   updatedAt     DateTime @updatedAt
 }
 

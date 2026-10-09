@@ -6,6 +6,10 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+### Añadido
+
+- Agenda (interno, aún sin usar): esquema con bloques de trabajo con hora de inicio, mecánico, cliente y orden, cierres de día (festivo y vacaciones) y horario propio por mecánico; planificador puro (`server/lib/planificador.js`) y migración de los trabajos de la agenda v1.13 a bloques.
+
 ## [1.13.2] - 2026-10-09
 
 ### Corregido

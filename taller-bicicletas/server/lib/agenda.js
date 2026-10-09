@@ -13,7 +13,7 @@ const NOMBRES_DIA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vier
 
 // Convierte «HH:MM» a minutos desde medianoche (0-1440) o null si no es válido:
 // horas 00-24 (24:00 solo con minutos 0) y minutos múltiplos de 15.
-function minutosDeHora(texto) {
+export function minutosDeHora(texto) {
   if (typeof texto !== 'string') return null
   const coincidencia = /^(\d{2}):(\d{2})$/.exec(texto.trim())
   if (!coincidencia) return null
@@ -26,7 +26,7 @@ function minutosDeHora(texto) {
 }
 
 // Formatea minutos desde medianoche como «HH:MM» (1440 -> «24:00»).
-function horaDeMinutos(minutos) {
+export function horaDeMinutos(minutos) {
   const horas = Math.floor(minutos / 60)
   const min = minutos % 60
   return `${String(horas).padStart(2, '0')}:${String(min).padStart(2, '0')}`
