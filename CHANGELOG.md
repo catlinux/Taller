@@ -6,6 +6,15 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.16.0] - 2026-10-09
+
+### Añadido
+
+- Festivos y vacaciones: se puede marcar un día de lunes a viernes como «Festivo» o «Vacaciones» (con motivo) desde «Ajustar día», o un periodo entero en Configuración > Agenda > «Festivos y vacaciones» (máximo 60 días), y reabrirlo después. El cierre es de todo el taller y un día cerrado no tiene capacidad: la planificación lo salta.
+- Si los días que se cierran ya tienen trabajos, se pregunta si pasarlos al siguiente día abierto o dejarlos (se quedan en rojo).
+- En la semana, el día cerrado se ve rayado con la etiqueta «Festivo · motivo» o «Vacaciones» y no admite trabajos nuevos.
+- API: `PUT /api/agenda/cierres`, `GET /api/agenda/cierres` y los campos `cierre`, `motivo` y `trabajos` en `PUT /api/agenda/dias/:fecha`.
+
 ## [1.15.0] - 2026-10-09
 
 ### Añadido

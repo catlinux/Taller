@@ -13,7 +13,7 @@ import {
   minutosDeHora,
   horaDeMinutos,
 } from '../lib/agenda.js'
-import { insertar, mover, redimensionar, aDesplazamiento, aReloj, minutosDeTramos } from '../lib/planificador.js'
+import { insertar, mover, redimensionar, vaciarDia, aDesplazamiento, aReloj, minutosDeTramos } from '../lib/planificador.js'
 import {
   leerConfig,
   cargarCalendario,
@@ -440,9 +440,9 @@ router.delete('/trabajos/:id', async (req, res, next) => {
 })
 
 // Fila del día en la forma que devuelven PUT y DELETE /dias/:fecha.
-async function respuestaDia(fecha) {
-  const fila = await prisma.agendaDia.findUnique({ where: { fecha } })
-  const config = await leerConfig(prisma)
+async function respuestaDia(db, fecha) {
+  const fila = await db.agendaDia.findUnique({ where: { fecha } })
+  const config = await leerConfig(db)
   let tramos = config.tramos
   if (fila?.tramos) {
     try { tramos = JSON.parse(fila.tramos) } catch { /* se usan los generales */ }
@@ -459,18 +459,79 @@ async function respuestaDia(fecha) {
 }
 
 // Guarda o borra la fila de un día: se borra solo si no queda tramos, horas ni cierre.
-async function guardarFilaDia(fecha, { tramos, horasMaximas, cierre, motivo }) {
+async function guardarFilaDia(db, fecha, { tramos, horasMaximas, cierre, motivo }) {
   if (tramos === null && horasMaximas === null && !cierre) {
-    await prisma.agendaDia.deleteMany({ where: { fecha } })
+    await db.agendaDia.deleteMany({ where: { fecha } })
     return
   }
   const datos = { tramos: tramos ? JSON.stringify(tramos) : null, horasMaximas, cierre: cierre ?? null, motivo: cierre ? (motivo ?? null) : null }
-  await prisma.agendaDia.upsert({ where: { fecha }, update: datos, create: { fecha, ...datos } })
+  await db.agendaDia.upsert({ where: { fecha }, update: datos, create: { fecha, ...datos } })
 }
 
-// PUT /dias/:fecha (admin) { tramos?: array|null, horasMaximas?: número|null } ->
-// personaliza el horario y las horas máximas de un día (común a todos los
-// mecánicos). null vuelve al valor general. Los trabajos ya programados NO se mueven.
+const TIPOS_CIERRE = ['festivo', 'vacaciones']
+const MAX_DIAS_CIERRE = 60
+
+// Valida los campos de cierre de una petición: { cierre (null = reabrir), motivo, trabajos }.
+function leerCierre(body) {
+  const cierre = body.cierre
+  if (cierre !== null && !TIPOS_CIERRE.includes(cierre)) throw new ErrorDatos('El cierre debe ser «festivo», «vacaciones» o null')
+  let motivo = null
+  if (body.motivo !== undefined && body.motivo !== null) {
+    if (typeof body.motivo !== 'string' || body.motivo.trim().length > 100) throw new ErrorDatos('El motivo debe ser un texto de hasta 100 caracteres')
+    motivo = body.motivo.trim() || null
+  }
+  if (body.trabajos !== undefined && body.trabajos !== 'mover' && body.trabajos !== 'mantener') {
+    throw new ErrorDatos('«trabajos» debe ser «mover» o «mantener»')
+  }
+  return { cierre, motivo, trabajos: body.trabajos }
+}
+
+// Cierra (o reabre, con cierre null) los días indicados para todo el taller. Si
+// los días que se cierran tienen trabajos y falta «trabajos», pide una decisión
+// (409). Con «mover» vacía esos días hacia el siguiente día abierto en la cola de
+// cada mecánico; con «mantener» los trabajos se quedan (en rojo).
+async function aplicarCierre(db, fechas, { cierre, motivo, trabajos }) {
+  let conBloques = []
+  if (cierre !== null) {
+    // Los días que ya estaban cerrados no vuelven a preguntar por sus trabajos.
+    const yaCerrados = new Set((await db.agendaDia.findMany({ where: { fecha: { in: fechas }, cierre: { not: null } }, select: { fecha: true } })).map((d) => d.fecha))
+    conBloques = await db.agendaBloque.findMany({
+      where: { fecha: { in: fechas.filter((fecha) => !yaCerrados.has(fecha)) } },
+      select: { fecha: true, trabajoId: true, trabajo: { select: { mecanicoId: true } } },
+    })
+    if (conBloques.length > 0 && trabajos === undefined) {
+      throw new PideDecision({
+        requiereDecision: 'trabajosEnDiaCerrado',
+        trabajos: new Set(conBloques.map((b) => b.trabajoId)).size,
+        dias: [...new Set(conBloques.map((b) => b.fecha))].sort(),
+      })
+    }
+  }
+  for (const fecha of fechas) {
+    const fila = await db.agendaDia.findUnique({ where: { fecha } })
+    await guardarFilaDia(db, fecha, {
+      tramos: fila?.tramos ? JSON.parse(fila.tramos) : null,
+      horasMaximas: fila?.horasMaximas ?? null,
+      cierre,
+      motivo,
+    })
+  }
+  if (cierre === null || trabajos !== 'mover') return
+  for (const fecha of [...new Set(conBloques.map((b) => b.fecha))].sort()) {
+    const colas = new Set(conBloques.filter((b) => b.fecha === fecha).map((b) => b.trabajo.mecanicoId ?? null))
+    for (const mecanicoId of colas) {
+      const { calendario } = await cargarCalendario(db, mecanicoId, fecha)
+      const plan = vaciarDia({ calendario, colas: await cargarColas(db, mecanicoId, fecha), fecha })
+      await aplicarResultado(db, plan)
+    }
+  }
+}
+
+// PUT /dias/:fecha (admin) { tramos?: array|null, horasMaximas?: número|null,
+// cierre?: 'festivo'|'vacaciones'|null, motivo?, trabajos?: 'mover'|'mantener' }
+// -> personaliza el horario y las horas máximas de un día (común a todos los
+// mecánicos) o lo cierra/reabre. null vuelve al valor general. 409
+// { requiereDecision: 'trabajosEnDiaCerrado' } si el día que se cierra tiene trabajos.
 router.put('/dias/:fecha', roleMiddleware('admin'), async (req, res, next) => {
   try {
     const fecha = req.params.fecha
@@ -478,33 +539,97 @@ router.put('/dias/:fecha', roleMiddleware('admin'), async (req, res, next) => {
       return res.status(400).json({ error: 'Solo se pueden configurar días de lunes a viernes' })
     }
     const body = req.body ?? {}
-    if (body.tramos === undefined && body.horasMaximas === undefined) {
+    if (body.tramos === undefined && body.horasMaximas === undefined && body.cierre === undefined) {
       return res.status(400).json({ error: 'No se ha indicado ningún campo para el día' })
     }
-    const existente = await prisma.agendaDia.findUnique({ where: { fecha } })
-    let tramos = existente?.tramos ? JSON.parse(existente.tramos) : null
-    let horasMaximas = existente?.horasMaximas ?? null
+    const respuesta = await enTransaccion(res, async (db) => {
+      const existente = await db.agendaDia.findUnique({ where: { fecha } })
+      let tramos = existente?.tramos ? JSON.parse(existente.tramos) : null
+      let horasMaximas = existente?.horasMaximas ?? null
 
-    if (body.tramos !== undefined) {
-      if (body.tramos === null) {
-        tramos = null
+      if (body.tramos !== undefined) {
+        if (body.tramos === null) {
+          tramos = null
+        } else {
+          const { tramos: normalizados, error } = validarTramos(body.tramos)
+          if (error) throw new ErrorDatos(error)
+          tramos = normalizados
+        }
+      }
+      if (body.horasMaximas !== undefined) {
+        if (body.horasMaximas === null) {
+          horasMaximas = null
+        } else {
+          const { horasMaximas: normalizadas, error } = validarHorasMaximas(body.horasMaximas)
+          if (error) throw new ErrorDatos(error)
+          horasMaximas = normalizadas
+        }
+      }
+      await guardarFilaDia(db, fecha, { tramos, horasMaximas, cierre: existente?.cierre, motivo: existente?.motivo })
+      if (body.cierre !== undefined) await aplicarCierre(db, [fecha], leerCierre(body))
+      return respuestaDia(db, fecha)
+    })
+    if (respuesta) res.json(respuesta)
+    return undefined
+  } catch (error) { return next(error) }
+})
+
+// Días de lunes a viernes entre dos fechas (ambas incluidas); lanza ErrorDatos si el rango no vale.
+function diasLaborablesEntre(desde, hasta) {
+  if (!esFechaValida(desde) || !esFechaValida(hasta)) throw new ErrorDatos('Las fechas deben tener el formato AAAA-MM-DD')
+  if (hasta < desde) throw new ErrorDatos('La fecha final no puede ser anterior a la inicial')
+  const fechas = []
+  let dia = desde
+  let total = 0
+  while (dia <= hasta) {
+    total += 1
+    if (total > MAX_DIAS_CIERRE) throw new ErrorDatos(`El periodo no puede pasar de ${MAX_DIAS_CIERRE} días`)
+    if (esLaborable(dia)) fechas.push(dia)
+    dia = sumarDias(dia, 1)
+  }
+  if (fechas.length === 0) throw new ErrorDatos('El periodo no incluye ningún día de lunes a viernes')
+  return fechas
+}
+
+// PUT /cierres (admin) { desde, hasta, cierre: 'festivo'|'vacaciones'|null, motivo?,
+// trabajos?: 'mover'|'mantener' } -> cierra o reabre un periodo (solo lunes a
+// viernes, máximo 60 días). 409 { requiereDecision: 'trabajosEnDiaCerrado',
+// trabajos, dias } si hay trabajos en los días que se cierran.
+router.put('/cierres', roleMiddleware('admin'), async (req, res, next) => {
+  try {
+    const body = req.body ?? {}
+    const respuesta = await enTransaccion(res, async (db) => {
+      const fechas = diasLaborablesEntre(body.desde, body.hasta)
+      await aplicarCierre(db, fechas, leerCierre(body))
+      return { desde: body.desde, hasta: body.hasta, dias: fechas.length, cierre: body.cierre }
+    })
+    if (respuesta) res.json(respuesta)
+    return undefined
+  } catch (error) { return next(error) }
+})
+
+// GET /cierres -> periodos cerrados desde hoy (días de lunes a viernes seguidos del
+// mismo tipo y motivo agrupados): [{ desde, hasta, cierre, motivo, dias }].
+router.get('/cierres', async (req, res, next) => {
+  try {
+    const filas = await prisma.agendaDia.findMany({
+      where: { cierre: { not: null }, fecha: { gte: hoyLocal() } },
+      orderBy: { fecha: 'asc' },
+    })
+    const periodos = []
+    for (const fila of filas) {
+      const ultimo = periodos[periodos.length - 1]
+      // Siguiente día laborable al último del periodo (el viernes enlaza con el lunes).
+      let siguiente = ultimo ? sumarDias(ultimo.hasta, 1) : null
+      while (siguiente && !esLaborable(siguiente)) siguiente = sumarDias(siguiente, 1)
+      if (ultimo && ultimo.cierre === fila.cierre && ultimo.motivo === fila.motivo && siguiente === fila.fecha) {
+        ultimo.hasta = fila.fecha
+        ultimo.dias += 1
       } else {
-        const { tramos: normalizados, error } = validarTramos(body.tramos)
-        if (error) return res.status(400).json({ error })
-        tramos = normalizados
+        periodos.push({ desde: fila.fecha, hasta: fila.fecha, cierre: fila.cierre, motivo: fila.motivo, dias: 1 })
       }
     }
-    if (body.horasMaximas !== undefined) {
-      if (body.horasMaximas === null) {
-        horasMaximas = null
-      } else {
-        const { horasMaximas: normalizadas, error } = validarHorasMaximas(body.horasMaximas)
-        if (error) return res.status(400).json({ error })
-        horasMaximas = normalizadas
-      }
-    }
-    await guardarFilaDia(fecha, { tramos, horasMaximas, cierre: existente?.cierre, motivo: existente?.motivo })
-    return res.json(await respuestaDia(fecha))
+    return res.json(periodos)
   } catch (error) { return next(error) }
 })
 
@@ -517,8 +642,8 @@ router.delete('/dias/:fecha', roleMiddleware('admin'), async (req, res, next) =>
       return res.status(400).json({ error: 'Solo se pueden configurar días de lunes a viernes' })
     }
     const existente = await prisma.agendaDia.findUnique({ where: { fecha } })
-    if (existente) await guardarFilaDia(fecha, { tramos: null, horasMaximas: null, cierre: existente.cierre, motivo: existente.motivo })
-    return res.json(await respuestaDia(fecha))
+    if (existente) await guardarFilaDia(prisma, fecha, { tramos: null, horasMaximas: null, cierre: existente.cierre, motivo: existente.motivo })
+    return res.json(await respuestaDia(prisma, fecha))
   } catch (error) { return next(error) }
 })
 

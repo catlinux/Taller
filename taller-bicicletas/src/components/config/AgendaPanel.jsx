@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { apiGet, apiPut } from '../../lib/api.js'
 import EditorTramos from '../agenda/EditorTramos.jsx'
 import { AvisoSoloAdmin, PieGuardar } from './comunes.jsx'
+import CierresAgenda from './CierresAgenda.jsx'
 import { validarTramosCliente, minutosTramos } from '../../lib/agenda.js'
 
 // Interpreta el texto del campo de horas máximas como número (admite coma).
@@ -131,6 +132,8 @@ export default function AgendaPanel() {
             onGuardar={alGuardar}
             onDescartar={descartar}
           />
+
+          {esAdmin && <CierresAgenda token={token} />}
         </>
       )}
     </div>

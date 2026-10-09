@@ -10,6 +10,7 @@ import ColumnaDia, { minutoDeEvento } from '../components/agenda/ColumnaDia.jsx'
 import AjusteDiaModal from '../components/agenda/AjusteDiaModal.jsx'
 import ModalDesborde from '../components/agenda/ModalDesborde.jsx'
 import ModalTrabajo from '../components/agenda/ModalTrabajo.jsx'
+import ModalCierreTrabajos from '../components/agenda/ModalCierreTrabajos.jsx'
 
 // Fecha de hoy en formato AAAA-MM-DD usando la hora local (para «Hoy» y por
 // defecto cuando la URL no trae semana).
@@ -52,6 +53,7 @@ export default function Agenda() {
   const [destino, setDestino] = useState(null)
   const [diaAjustando, setDiaAjustando] = useState(null)
   const [errorAjuste, setErrorAjuste] = useState('')
+  const [cierrePendiente, setCierrePendiente] = useState(null)
   const [errorAccion, setErrorAccion] = useState('')
   const [errorModal, setErrorModal] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -87,9 +89,17 @@ export default function Agenda() {
     return () => clearInterval(temporizador)
   }, [])
 
+  // Guarda el ajuste de un día; si se cierra con trabajos dentro el servidor pide
+  // decidir (409) y se repite con «mover» o «mantener».
   const guardarDia = useMutation(({ fecha, cuerpo }) => apiPut(`/api/agenda/dias/${fecha}`, token, cuerpo), {
-    onSuccess: () => { invalidar(); setDiaAjustando(null); setErrorAjuste('') },
-    onError: (e) => setErrorAjuste(e.message),
+    onSuccess: () => { invalidar(); setDiaAjustando(null); setErrorAjuste(''); setCierrePendiente(null) },
+    onError: (e, { fecha, cuerpo }) => {
+      if (e.status === 409 && e.data?.requiereDecision === 'trabajosEnDiaCerrado') {
+        setCierrePendiente({ trabajos: e.data.trabajos, fecha, cuerpo })
+      } else {
+        setErrorAjuste(e.message)
+      }
+    },
   })
   const resetDia = useMutation((fecha) => apiDelete(`/api/agenda/dias/${fecha}`, token), {
     onSuccess: () => { invalidar(); setDiaAjustando(null); setErrorAjuste('') },
@@ -235,6 +245,11 @@ export default function Agenda() {
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {dia.tramosPersonalizados && <span className="badge border border-naranja-500/40 bg-naranja-500/10 text-naranja-300">Horario personalizado</span>}
           {dia.horasPersonalizadas && <span className="badge border border-naranja-500/40 bg-naranja-500/10 text-naranja-300">Horas personalizadas</span>}
+          {dia.cierre && (
+            <span className="badge border border-rose-500/40 bg-rose-500/10 text-rose-300">
+              {dia.cierre === 'vacaciones' ? 'Vacaciones' : 'Festivo'}{dia.motivo ? ` · ${dia.motivo}` : ''}
+            </span>
+          )}
         </div>
       </div>
     )
@@ -379,13 +394,23 @@ export default function Agenda() {
         />
       )}
 
+      {cierrePendiente && (
+        <ModalCierreTrabajos
+          trabajos={cierrePendiente.trabajos}
+          enviando={guardarDia.isLoading}
+          onMover={() => guardarDia.mutate({ fecha: cierrePendiente.fecha, cuerpo: { ...cierrePendiente.cuerpo, trabajos: 'mover' } })}
+          onMantener={() => guardarDia.mutate({ fecha: cierrePendiente.fecha, cuerpo: { ...cierrePendiente.cuerpo, trabajos: 'mantener' } })}
+          onCancelar={() => setCierrePendiente(null)}
+        />
+      )}
+
       {diaAjustando && (
         <AjusteDiaModal
           dia={diaAjustando}
           config={config}
           guardando={guardarDia.isLoading || resetDia.isLoading}
           error={errorAjuste}
-          onGuardar={({ tramos, horasMaximas }) => guardarDia.mutate({ fecha: diaAjustando.fecha, cuerpo: { tramos, horasMaximas } })}
+          onGuardar={({ tramos, horasMaximas, cierre, motivo }) => guardarDia.mutate({ fecha: diaAjustando.fecha, cuerpo: { tramos, horasMaximas, cierre, motivo } })}
           onVolverPredeterminado={() => resetDia.mutate(diaAjustando.fecha)}
           onCerrar={() => { setDiaAjustando(null); setErrorAjuste('') }}
         />

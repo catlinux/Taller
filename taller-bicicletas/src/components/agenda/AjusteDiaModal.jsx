@@ -25,6 +25,8 @@ export default function AjusteDiaModal({ dia, config, onGuardar, onVolverPredete
   const [horasPersonalizadas, setHorasPersonalizadas] = useState(Boolean(dia.horasPersonalizadas))
   const [tramos, setTramos] = useState(dia.tramosPersonalizados ? dia.tramos : config.tramos)
   const [horasTexto, setHorasTexto] = useState(String(dia.horasPersonalizadas ? dia.horasMaximas : config.horasMaximas))
+  const [cierre, setCierre] = useState(dia.cierre ?? '')
+  const [motivo, setMotivo] = useState(dia.motivo ?? '')
   const [errorLocal, setErrorLocal] = useState('')
 
   const tramosEfectivos = horarioPersonalizado ? tramos : config.tramos
@@ -43,7 +45,7 @@ export default function AjusteDiaModal({ dia, config, onGuardar, onVolverPredete
       if (numero === null) { setErrorLocal('Las horas máximas deben ser un número mayor o igual que 0.'); return }
       horasEnviar = numero
     }
-    onGuardar({ tramos: tramosEnviar, horasMaximas: horasEnviar })
+    onGuardar({ tramos: tramosEnviar, horasMaximas: horasEnviar, cierre: cierre || null, motivo: cierre ? motivo.trim() : null })
   }
 
   return (
@@ -61,6 +63,24 @@ export default function AjusteDiaModal({ dia, config, onGuardar, onVolverPredete
         </div>
 
         <div className="space-y-6">
+          <div>
+            <label className="block">
+              <span className="label">Estado del día (común a todos los mecánicos)</span>
+              <select value={cierre} onChange={(event) => setCierre(event.target.value)} aria-label="Estado del día" className="input mt-1.5">
+                <option value="">Abierto</option>
+                <option value="festivo">Festivo</option>
+                <option value="vacaciones">Vacaciones</option>
+              </select>
+            </label>
+            {cierre && (
+              <label className="mt-3 block">
+                <span className="label">Motivo (opcional)</span>
+                <input type="text" value={motivo} maxLength={100} onChange={(event) => setMotivo(event.target.value)} placeholder="Fiesta mayor" aria-label="Motivo del cierre" className="input mt-1.5" />
+              </label>
+            )}
+            {cierre && <p className="mt-1.5 text-xs text-slate-500">Un día cerrado no tiene capacidad: no admite trabajos nuevos.</p>}
+          </div>
+
           <div>
             <label className="flex items-center gap-2.5">
               <input type="checkbox" checked={horarioPersonalizado} onChange={(event) => setHorarioPersonalizado(event.target.checked)} className="h-4 w-4" />

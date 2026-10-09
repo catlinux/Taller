@@ -202,7 +202,7 @@ Partido en dos tareas.
 - **Terminado cuando**: hay capturas de la semana sin huecos, de un trabajo que cruza la pausa, del modal de desborde, de un trabajo partido 1/2–2/2 y de la vista en el móvil, y `npm test` y `npm run build` están en verde.
 - **Ejecutor**: AgentRelay, esfuerzo alto. Cada tarea toca como máximo 4 archivos.
 
-### [ ] Paso 5: festivos y vacaciones (1.16.0, menor)
+### [x] Paso 5: festivos y vacaciones (1.16.0, menor)
 
 - **Servidor** (`server/routes/agenda.js` y cálculo del calendario): el contrato de «Cierres» de la API. El calendario devuelve `cerrado` y el planificador ya lo respeta desde el paso 2.
 - **Interfaz**:
