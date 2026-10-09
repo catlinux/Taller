@@ -146,7 +146,7 @@ Restricciones de **toda** tarea delegada con AgentRelay (copiarlas literalmente 
 
 Tras cada ejecución, el orquestador comprueba `git log`, `git branch -a`, `git stash list` y `git status`, lee el diff, ejecuta `npm test` y `npm run build` y comprueba la interfaz con capturas (Edge headless) sobre la copia. Después hace commit con la versión y la entrada de `CHANGELOG.md` del paso.
 
-### [ ] Paso 1: corregir VAR-06 (1.13.2, parche)
+### [x] Paso 1: corregir VAR-06 (1.13.2, parche)
 
 - **Fallo**: en la agenda, algunos trabajos con varios tiempos (p. ej. VAR-06, «Desmontar/montar bici», tiempos 180/240/300) no se dejan programar.
   - El servidor acepta hasta 1440 min, así que el fallo está por confirmar.

@@ -54,11 +54,14 @@ export default function SelectorTrabajo({ anclaRef, operaciones, onElegir, onCer
   useEffect(() => { inputRef.current?.focus() }, [])
   useEffect(() => { setActivo(0) }, [filtro])
 
-  // Cierra al pulsar fuera del panel.
+  // Cierra al pulsar fuera del panel. Se usa composedPath() porque al elegir un
+  // trabajo con varios tiempos React ya ha quitado el botón del DOM cuando este
+  // listener se ejecuta, y contains() lo tomaría por un clic fuera.
   useEffect(() => {
     function alClicFuera(event) {
-      if (panelRef.current?.contains(event.target)) return
-      if (anclaRef?.current?.contains(event.target)) return
+      const ruta = event.composedPath()
+      if (ruta.includes(panelRef.current)) return
+      if (ruta.includes(anclaRef?.current)) return
       onCerrar()
     }
     document.addEventListener('mousedown', alClicFuera)
