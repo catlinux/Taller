@@ -14,6 +14,7 @@ Proyecto: `taller-bicicletas/` (Express + Prisma/SQLite en `server/`, React + Vi
 6. **Planificación automática desde la orden**: al añadir mano de obra a una orden, el trabajo entra solo en la agenda del mecánico de la orden (o «Sin asignar»), en el primer hueco a partir de la **fecha de entrada** (si es hoy, a partir de ahora), con el **tiempo de la línea de la orden**.
 7. **Cliente**: el trabajo muestra nombre y primer apellido del cliente; desde la agenda también se puede elegir cliente.
 8. Los trabajos programados se pueden **mover y editar** (arrastrar, duración, nota, cliente, mecánico).
+9. **Festivos y vacaciones**: el calendario no está ni estará sincronizado con uno real, así que se pueden marcar días de lunes a viernes como **Festivo** o **Vacaciones**: uno a uno o por periodo, de una fecha a otra. Un día cerrado no tiene capacidad. El cierre es del taller, común a todos los mecánicos.
 
 ## Diseño
 
@@ -29,7 +30,8 @@ Proyecto: `taller-bicicletas/` (Express + Prisma/SQLite en `server/`, React + Vi
 - **Nuevo `AgendaBloque`** (un trozo del trabajo dentro de un día):
   - Campos: `id`, `trabajoId Int` (relación con `AgendaTrabajo`, `onDelete: Cascade`), `fecha String` («AAAA-MM-DD»), `inicio Int` (minutos desde medianoche, en la hora del reloj), `minutos Int` (minutos **de trabajo**: no cuentan las pausas), `forzado Boolean @default(false)` y `@@index([fecha])`.
   - Un trabajo sin partir tiene 1 bloque; uno partido entre días tiene uno por día. La suma de `minutos` de los bloques es `AgendaTrabajo.minutos`.
-- `Mecanico` añade `agendaTramos String?` (JSON) y `agendaHorasMaximas Float?` (paso 6).
+- `AgendaDia` añade `cierre String?` (`'festivo'` | `'vacaciones'`; `null` = abierto) y `motivo String?` (p. ej. «Fiesta mayor»). La fila se borra solo cuando no quedan ni tramos, ni horas, ni cierre.
+- `Mecanico` añade `agendaTramos String?` (JSON) y `agendaHorasMaximas Float?` (paso 7).
 - La cola de un mecánico en un día está formada por todos los bloques de ese día cuyos trabajos tienen ese `mecanicoId`.
 - El calendario de un mecánico en un día se toma por este orden de precedencia: `AgendaDia` (ajuste del día, común a todos) > valores propios del `Mecanico` > configuración general (`Ajuste 'agenda'`). Solo cuentan los días de lunes a viernes.
 
@@ -49,7 +51,7 @@ En cada día se trabaja en **desplazamiento laborable**: los minutos de trabajo 
 
 ### Planificador (módulo puro `server/lib/planificador.js`, con pruebas)
 
-Recibe `calendario(fecha) -> { tramos, maxMin }` y los bloques de la cola agrupados por fecha. Devuelve los cambios que hay que aplicar: `{ crear, actualizar, borrar }`, o bien `{ requiereDecision: true, excesoMin, fecha }`. Nunca toca la base de datos.
+Recibe `calendario(fecha) -> { tramos, maxMin, cerrado }` (un día cerrado se comporta como `L = 0` y `C = 0`) y los bloques de la cola agrupados por fecha. Devuelve los cambios que hay que aplicar: `{ crear, actualizar, borrar }`, o bien `{ requiereDecision: true, excesoMin, fecha }`. Nunca toca la base de datos.
 
 **Insertar** (`insertar`): trabajo de `N` min en `(fecha, desplazamiento x)` con `desborde ∈ { null, 'forzar', 'siguiente' }`.
 
@@ -102,6 +104,8 @@ Recibe `calendario(fecha) -> { tramos, maxMin }` y los bloques de la cola agrupa
 | 12 | `primerHueco` con un hueco de 20 min a las 10:00 y un trabajo de 45 min | Salta ese hueco y usa el siguiente donde cabe entero o el final del día |
 | 13 | Redimensionar | Crecer empuja; decrecer recorta el último bloque y borra los que se quedan a 0 |
 | 14 | Día con `maxMin = 0` | Se salta en `siguiente` y en `primerHueco` |
+| 15 | Día cerrado (festivo o vacaciones) | Se salta en `siguiente` y en `primerHueco`; `insertar` directamente en él da error («El día está cerrado: festivo») |
+| 16 | `vaciarDia(fecha)` | Sus bloques pasan, en orden, al principio del siguiente día abierto con `siguiente` y en cascada (para cerrar un día que ya tiene trabajos) |
 
 ### API (`server/routes/agenda.js`)
 
@@ -113,7 +117,14 @@ Recibe `calendario(fecha) -> { tramos, maxMin }` y los bloques de la cola agrupa
   - Responde 201 con el trabajo, o **409** con `{ requiereDecision: true, excesoMin, fecha }` para que la interfaz pregunte y repita la petición con `desborde`.
 - `PUT /trabajos/:id { fecha?, inicio?, mecanicoId?, minutos?, nota?, clienteId?, desborde? }`: mover, cambiar de mecánico o redimensionar, con el mismo protocolo 409.
 - `DELETE /trabajos/:id`: quita el trabajo entero.
-- `PUT|DELETE /dias/:fecha` y `GET|PUT /config`: sin cambios, salvo `config.autoPlanificar` (booleano, `true` por defecto; paso 5).
+- `PUT|DELETE /dias/:fecha` y `GET|PUT /config`: sin cambios, salvo `config.autoPlanificar` (booleano, `true` por defecto; paso 6).
+- Cierres (paso 5, admin):
+  - `PUT /dias/:fecha { cierre: 'festivo'|'vacaciones'|null, motivo?, trabajos?: 'mover'|'mantener' }`.
+  - `PUT /cierres { desde, hasta, cierre, motivo?, trabajos? }`: periodo, solo de lunes a viernes, como máximo 60 días.
+  - Si los días que se cierran tienen bloques y falta `trabajos`, se responde **409** `{ requiereDecision: 'trabajosEnDiaCerrado', trabajos: n, dias: [...] }`.
+  - Con `mover`: `vaciarDia` en todas las colas.
+  - Con `mantener`: se quedan y se muestran en rojo («día cerrado»).
+  - `GET /semana` añade a cada día `cierre` y `motivo`.
 - Todo cambio de bloques se hace en `prisma.$transaction`, cargando los bloques de la cola desde la fecha afectada en adelante.
 
 ### Datos existentes
@@ -150,7 +161,7 @@ Tras cada ejecución, el orquestador comprueba `git log`, `git branch -a`, `git 
 
 - **Archivos**:
   - `prisma/schema.prisma`
-  - `server/lib/planificador.js` y `server/lib/planificador.test.mjs` (los 14 casos de arriba y los que hagan falta)
+  - `server/lib/planificador.js` y `server/lib/planificador.test.mjs` (los 16 casos de arriba y los que hagan falta)
   - `server/lib/agendaMigracion.js` y su prueba
   - `package.json` (lista de pruebas)
 - **Terminado cuando**: el esquema queda aplicado en una copia, `npm test` está en verde con todos los casos y las funciones están documentadas en una línea cada una.
@@ -191,7 +202,18 @@ Partido en dos tareas.
 - **Terminado cuando**: hay capturas de la semana sin huecos, de un trabajo que cruza la pausa, del modal de desborde, de un trabajo partido 1/2–2/2 y de la vista en el móvil, y `npm test` y `npm run build` están en verde.
 - **Ejecutor**: AgentRelay, esfuerzo alto. Cada tarea toca como máximo 4 archivos.
 
-### [ ] Paso 5: planificación automática desde las órdenes (1.16.0, menor)
+### [ ] Paso 5: festivos y vacaciones (1.16.0, menor)
+
+- **Servidor** (`server/routes/agenda.js` y cálculo del calendario): el contrato de «Cierres» de la API. El calendario devuelve `cerrado` y el planificador ya lo respeta desde el paso 2.
+- **Interfaz**:
+  - En el modal «Ajustar día» (`AjusteDiaModal.jsx`): selector «Abierto / Festivo / Vacaciones» y motivo.
+  - En Configuración > Agenda: «Cerrar un periodo» (desde, hasta, tipo y motivo) y lista de los próximos cierres, cada uno con «Reabrir».
+  - En la semana, el día cerrado se ve gris y rayado, con la etiqueta «Festivo · motivo» o «Vacaciones», y no admite clics para añadir.
+  - El 409 de «trabajosEnDiaCerrado» pregunta «Pasar los N trabajos al siguiente día abierto» o «Dejarlos».
+- **Terminado cuando**: hay capturas de un festivo y de una semana de vacaciones; las pruebas de API comprueban que la planificación salta los días cerrados y que cerrar un día con trabajos los mueve; `npm test` en verde.
+- **Ejecutor**: AgentRelay, esfuerzo medio (2 tareas: servidor e interfaz).
+
+### [ ] Paso 6: planificación automática desde las órdenes (1.17.0, menor)
 
 - **Archivos**:
   - `server/lib/agendaOrdenes.js` (nuevo, con Prisma): `planificarLinea(tx, linea, orden)`, `sincronizarLinea(tx, linea)` y `replanificarOrden(tx, ordenId)`.
@@ -210,7 +232,7 @@ Partido en dos tareas.
 - **Terminado cuando**: hay pruebas reales contra la API (alta, edición, borrado, cambio de mecánico, fecha de entrada futura, orden de hoy por la tarde), capturas y `npm test` en verde.
 - **Ejecutor**: AgentRelay, esfuerzo alto (2 tareas: servidor e interfaz).
 
-### [ ] Paso 6: horario por mecánico (1.17.0, menor)
+### [ ] Paso 7: horario por mecánico (1.18.0, menor)
 
 - Campos `agendaTramos` y `agendaHorasMaximas` en `Mecanico`, editables en Configuración > Mecánicos con `EditorTramos.jsx`. Vacíos = los del taller.
 - El calendario aplica la precedencia del diseño.
@@ -221,7 +243,8 @@ Partido en dos tareas.
 
 - Vista «Todos» con los dos mecánicos en columnas para un día.
 - Ajuste de día por mecánico (ahora el ajuste de día es común).
-- Festivos.
+- Vacaciones o ausencias de un solo mecánico (ahora el cierre es de todo el taller).
+- Sincronizar con un calendario real de festivos.
 - Botón «Compactar día» para cerrar huecos.
 - Pasar a la orden el tiempo cambiado en la agenda.
 
