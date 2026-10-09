@@ -34,6 +34,7 @@ export default function AgendaPanel() {
   )
 
   const [tramos, setTramos] = useState([])
+  const [autoPlanificar, setAutoPlanificar] = useState(true)
   const [horasTexto, setHorasTexto] = useState('')
   const [cargado, setCargado] = useState(false)
   const [estado, setEstado] = useState('idle')
@@ -44,12 +45,14 @@ export default function AgendaPanel() {
     if (data && !cargado) {
       setTramos(Array.isArray(data.tramos) ? data.tramos : [])
       setHorasTexto(String(data.horasMaximas ?? ''))
+      setAutoPlanificar(data.autoPlanificar !== false)
       setCargado(true)
     }
   }, [data, cargado])
 
   const horasNumero = parsearHorasMaximas(horasTexto)
   const hayCambios = Boolean(cargado && data) && (
+    autoPlanificar !== (data.autoPlanificar !== false) ||
     JSON.stringify(tramos) !== JSON.stringify(data.tramos) ||
     horasNumero === null || horasNumero !== Number(data.horasMaximas)
   )
@@ -61,6 +64,7 @@ export default function AgendaPanel() {
       if (respuesta) {
         setTramos(Array.isArray(respuesta.tramos) ? respuesta.tramos : [])
         setHorasTexto(String(respuesta.horasMaximas ?? ''))
+        setAutoPlanificar(respuesta.autoPlanificar !== false)
       }
       setEstado('ok')
       setMensaje('Guardado')
@@ -74,13 +78,14 @@ export default function AgendaPanel() {
     if (resultado.error) { setEstado('error'); setMensaje(resultado.error); return }
     if (horasNumero === null) { setEstado('error'); setMensaje('Las horas máximas deben ser un número mayor o igual que 0.'); return }
     setEstado('guardando')
-    guardar.mutate({ tramos: resultado.tramos, horasMaximas: horasNumero })
+    guardar.mutate({ tramos: resultado.tramos, horasMaximas: horasNumero, autoPlanificar })
   }
 
   function descartar() {
     if (!data) return
     setTramos(Array.isArray(data.tramos) ? data.tramos : [])
     setHorasTexto(String(data.horasMaximas ?? ''))
+    setAutoPlanificar(data.autoPlanificar !== false)
     setEstado('idle')
     setMensaje('')
   }
@@ -122,6 +127,22 @@ export default function AgendaPanel() {
               className="input mt-1.5"
             />
             <span className="mt-1.5 block text-xs text-slate-500">Se contabilizan {textoHoras(tramos)} h laborables con este horario.</span>
+          </label>
+
+          <label className="mt-5 flex max-w-xl items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={autoPlanificar}
+              disabled={!esAdmin}
+              onChange={(event) => { setAutoPlanificar(event.target.checked); setEstado('idle'); setMensaje('') }}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              <span className="text-sm font-medium text-slate-200">Planificar automáticamente las órdenes</span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Al añadir mano de obra con tiempo a una orden, el trabajo entra solo en la agenda del mecánico de la orden (o en «Sin asignar»), en el primer hueco desde la fecha de entrada.
+              </span>
+            </span>
           </label>
 
           <PieGuardar

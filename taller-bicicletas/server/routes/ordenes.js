@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import prisma from '../db.js'
+import { planificarLineasOrden, replanificarOrden, seguro, sincronizarLinea } from '../lib/agendaOrdenes.js'
 import { authMiddleware } from './auth.js'
 import { precioSinIva } from '../lib/precios.js'
 import { FORMAS_PAGO } from '../lib/pagos.js'
@@ -591,6 +592,7 @@ router.post('/', async (req, res, next) => {
       include: INCLUDE_ORDEN,
     })
 
+    await seguro(prisma, 'planificar la orden nueva', (tx) => planificarLineasOrden(tx, orden, orden.manoObra))
     return res.status(201).json(orden)
   } catch (error) {
     return next(error)
@@ -641,6 +643,9 @@ router.put('/:id', async (req, res, next) => {
     }
 
     await prisma.ordenReparacion.update({ where: { id }, data: datos })
+    if (datos.mecanicoId !== undefined && datos.mecanicoId !== existente.mecanicoId) {
+      await seguro(prisma, 'replanificar al cambiar de mecánico', (tx) => replanificarOrden(tx, id))
+    }
     const orden = await recalcularOrden(id)
     return res.json(orden)
   } catch (error) {
@@ -832,7 +837,8 @@ router.post('/:id/mano-obra', async (req, res, next) => {
       return res.status(400).json({ error })
     }
 
-    await prisma.ordenManoObra.create({ data: { ...datos, ordenId: id } })
+    const lineaCreada = await prisma.ordenManoObra.create({ data: { ...datos, ordenId: id } })
+    await seguro(prisma, 'planificar la línea nueva', (tx) => planificarLineasOrden(tx, orden, [lineaCreada]))
     const resultado = await recalcularOrden(id)
     return res.status(201).json(resultado)
   } catch (error) {
@@ -919,7 +925,8 @@ router.put('/:id/mano-obra/:manoObraId', async (req, res, next) => {
       return res.status(400).json({ error })
     }
 
-    await prisma.ordenManoObra.update({ where: { id: manoObraId }, data: datos })
+    const lineaEditada = await prisma.ordenManoObra.update({ where: { id: manoObraId }, data: datos })
+    await seguro(prisma, 'actualizar la agenda al editar la línea', (tx) => sincronizarLinea(tx, lineaEditada, orden))
     const resultado = await recalcularOrden(id)
     return res.json(resultado)
   } catch (error) {
@@ -989,6 +996,7 @@ router.post('/:id/duplicar', async (req, res, next) => {
       })
     })
 
+    await seguro(prisma, 'planificar la orden duplicada', (tx) => planificarLineasOrden(tx, duplicada, duplicada.manoObra))
     return res.status(201).json(duplicada)
   } catch (error) {
     return next(error)

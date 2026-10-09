@@ -6,6 +6,20 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.17.0] - 2026-10-09
+
+### Añadido
+
+- Planificación automática desde las órdenes: al añadir mano de obra con tiempo a una orden (también al crear o duplicar la orden y al restaurar desde la papelera), el trabajo entra solo en la agenda del mecánico de la orden (o en «Sin asignar»), en el primer hueco desde la fecha de entrada (si es hoy, desde ahora) y con el tiempo de la línea. Un trabajo solo se parte entre días.
+- Al editar el tiempo de una línea el trabajo se redimensiona (si se pasa del día, el resto pasa al siguiente) y la descripción y el código se copian; al borrar la línea o la orden el trabajo desaparece de la agenda; al cambiar el mecánico de la orden los trabajos desde hoy pasan a la agenda del nuevo.
+- En la orden, cada línea muestra «En agenda: mié 14/10 10:30» (con enlace a esa semana) o «Sin planificar» con el botón «Planificar».
+- Configuración > Agenda: casilla «Planificar automáticamente las órdenes» (activada por defecto).
+- API: `GET /api/agenda/orden/:id` y `POST /api/agenda/orden/:id/mano-obra/:lineaId/planificar`.
+
+### Cambiado
+
+- Mover o editar un trabajo en la agenda no cambia la orden: la agenda solo planifica. Si falla la planificación, la orden se guarda igual y la línea queda «Sin planificar».
+
 ## [1.16.0] - 2026-10-09
 
 ### Añadido

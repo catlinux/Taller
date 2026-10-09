@@ -213,7 +213,7 @@ Partido en dos tareas.
 - **Terminado cuando**: hay capturas de un festivo y de una semana de vacaciones; las pruebas de API comprueban que la planificación salta los días cerrados y que cerrar un día con trabajos los mueve; `npm test` en verde.
 - **Ejecutor**: AgentRelay, esfuerzo medio (2 tareas: servidor e interfaz).
 
-### [ ] Paso 6: planificación automática desde las órdenes (1.17.0, menor)
+### [x] Paso 6: planificación automática desde las órdenes (1.17.0, menor)
 
 - **Archivos**:
   - `server/lib/agendaOrdenes.js` (nuevo, con Prisma): `planificarLinea(tx, linea, orden)`, `sincronizarLinea(tx, linea)` y `replanificarOrden(tx, ordenId)`.

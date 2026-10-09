@@ -198,3 +198,13 @@ export function resumenDia({ trabajos, tramos, horasMaximas }) {
     fueraDeHorario,
   }
 }
+
+// Desde cuándo se busca hueco para planificar una línea de orden: el día de
+// entrada o hoy, el que sea posterior; si es hoy, también desde la hora actual
+// (reloj en minutos). Devuelve { fecha, reloj } con reloj null si no es hoy.
+export function inicioPlanificacion(fechaEntrada, ahora = new Date()) {
+  const hoy = formatearFecha(ahora)
+  const entrada = fechaEntrada ? formatearFecha(new Date(fechaEntrada)) : hoy
+  const fecha = entrada > hoy ? entrada : hoy
+  return { fecha, reloj: fecha === hoy ? ahora.getHours() * 60 + ahora.getMinutes() : null }
+}

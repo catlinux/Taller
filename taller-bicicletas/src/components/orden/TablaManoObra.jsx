@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { apiDelete, apiGet, apiPost, apiPut } from '../../lib/api.js'
 import { aNumero, formatearEuros } from '../../lib/ordenes.js'
@@ -24,6 +25,37 @@ function formatearPrecio(valor) {
 function tiemposDe(operacion) {
   const tiempos = Array.isArray(operacion.tiempos) ? operacion.tiempos : []
   return tiempos.length > 0 ? tiempos : [horasAMinutos(operacion.tiempoDefecto)]
+}
+
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+
+// «2026-10-14» + «10:30» -> «mié 14/10 10:30».
+function textoAgenda(fecha, inicio) {
+  const [anio, mes, dia] = fecha.split('-').map(Number)
+  const nombre = DIAS_CORTOS[new Date(anio, mes - 1, dia).getDay()]
+  return `${nombre} ${dia}/${mes} ${inicio}`
+}
+
+// Estado de una línea en la agenda: enlace a la semana donde está planificada o
+// «Sin planificar» con el botón para hacerlo a mano.
+function EstadoAgenda({ linea, plan, planificando, onPlanificar }) {
+  if (!plan) return null
+  if (plan.planificado) {
+    const mecanico = plan.mecanicoId === null ? 'sin' : plan.mecanicoId
+    return (
+      <p className="mt-1 px-2 text-xs text-slate-400">
+        En agenda:{' '}
+        <Link to={`/agenda?semana=${plan.fecha}&mecanico=${mecanico}`} className="text-azul-300 hover:underline">{textoAgenda(plan.fecha, plan.inicio)}</Link>
+      </p>
+    )
+  }
+  if (!(Number(linea.tiempo) > 0)) return null
+  return (
+    <p className="mt-1 flex items-center gap-2 px-2 text-xs text-slate-500">
+      Sin planificar
+      <button type="button" disabled={planificando} onClick={() => onPlanificar(linea)} className="rounded border border-azul-500/50 px-2 py-0.5 font-medium text-azul-300 hover:bg-azul-500/10 disabled:opacity-50">Planificar</button>
+    </p>
+  )
 }
 
 // Celda editable en línea: guarda el texto mientras se escribe y confirma al
@@ -98,10 +130,25 @@ export default function TablaManoObra({ orden, token }) {
   )
   const resultados = operaciones.slice(0, 10)
 
+  // Dónde está planificada cada línea en la agenda.
+  const claveAgenda = ['agenda', 'orden', String(ordenId)]
+  const { data: planificacion } = useQuery(
+    claveAgenda,
+    () => apiGet(`/api/agenda/orden/${ordenId}`, token),
+    { enabled: Boolean(token) && manoObra.length > 0 },
+  )
+  const planDeLinea = (linea) => planificacion?.lineas?.find((p) => p.lineaId === linea.id)
+
   function guardarEnCache(actualizada) {
     queryClient.setQueryData(claveOrden, actualizada)
     queryClient.invalidateQueries(['ordenes'])
+    queryClient.invalidateQueries(['agenda'])
   }
+
+  const planificarLinea = useMutation(
+    (linea) => apiPost(`/api/agenda/orden/${ordenId}/mano-obra/${linea.id}/planificar`, token, {}),
+    { onSuccess: () => queryClient.invalidateQueries(['agenda']), onError: (e) => setErrorAccion(e.message) },
+  )
 
   const editarLinea = useMutation(
     ({ manoObraId, cambios }) => apiPut(`/api/ordenes/${ordenId}/mano-obra/${manoObraId}`, token, cambios),
@@ -234,7 +281,10 @@ export default function TablaManoObra({ orden, token }) {
               : manoObra.map((linea) => (
                 <tr key={linea.id} className="hover:bg-antracita-700/20">
                   <td className="px-3 py-2"><CeldaEditable valor={linea.codigoOp} onCommit={(v) => confirmarEdicion(linea, 'codigoOp', v)} title={linea.codigoOp} className="min-w-0" /></td>
-                  <td className="px-3 py-2"><CeldaEditable valor={linea.descripcion} onCommit={(v) => confirmarEdicion(linea, 'descripcion', v)} title={linea.descripcion} className="min-w-0" /></td>
+                  <td className="px-3 py-2">
+                    <CeldaEditable valor={linea.descripcion} onCommit={(v) => confirmarEdicion(linea, 'descripcion', v)} title={linea.descripcion} className="min-w-0" />
+                    <EstadoAgenda linea={linea} plan={planDeLinea(linea)} planificando={planificarLinea.isLoading} onPlanificar={(l) => { setErrorAccion(''); planificarLinea.mutate(l) }} />
+                  </td>
                   <td className="px-3 py-2"><CeldaEditable valor={linea.tiempo} onCommit={(v) => confirmarEdicion(linea, 'tiempo', v)} numerico className="min-w-0 text-right" /></td>
                   <td className="px-3 py-2"><CeldaEditable valor={linea.precioHora} onCommit={(v) => confirmarEdicion(linea, 'precioHora', v)} numerico formato={formatearPrecio} className="min-w-0 text-right" /></td>
                   <td className="px-3 py-2 text-right font-medium text-white">{formatearEuros(linea.importe)}</td>

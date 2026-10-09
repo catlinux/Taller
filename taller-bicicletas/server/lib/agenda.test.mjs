@@ -10,6 +10,7 @@ import {
   esLaborable,
   nombreDia,
   resumenDia,
+  inicioPlanificacion,
 } from './agenda.js'
 
 // Pruebas de la lógica pura de la agenda: tramos, franjas, semana laborable y
@@ -184,3 +185,11 @@ test('resumenDia sin trabajos y con trabajos fuera de horario', () => {
   assert.deepEqual(conFuera.fueraDeHorario, [7])
 })
 
+
+test('inicioPlanificacion: entrada futura, entrada de hoy y entrada pasada', () => {
+  const ahora = new Date(2026, 9, 9, 17, 5)
+  assert.deepEqual(inicioPlanificacion(new Date(2026, 9, 14, 10, 0), ahora), { fecha: '2026-10-14', reloj: null })
+  assert.deepEqual(inicioPlanificacion(new Date(2026, 9, 9, 8, 0), ahora), { fecha: '2026-10-09', reloj: 17 * 60 + 5 })
+  assert.deepEqual(inicioPlanificacion(new Date(2026, 9, 1, 8, 0), ahora), { fecha: '2026-10-09', reloj: 17 * 60 + 5 })
+  assert.deepEqual(inicioPlanificacion(null, ahora), { fecha: '2026-10-09', reloj: 17 * 60 + 5 })
+})

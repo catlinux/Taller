@@ -14,6 +14,7 @@ import {
   horaDeMinutos,
 } from '../lib/agenda.js'
 import { insertar, mover, redimensionar, vaciarDia, aDesplazamiento, aReloj, minutosDeTramos } from '../lib/planificador.js'
+import { planificarLinea, planificacionDeOrden } from '../lib/agendaOrdenes.js'
 import {
   leerConfig,
   cargarCalendario,
@@ -232,6 +233,41 @@ router.get('/semana', async (req, res, next) => {
       mecanico: mecanico ? { id: mecanico.id, nombre: mecanico.nombre } : null,
       dias: respuestaDias,
     })
+  } catch (error) { return next(error) }
+})
+
+// GET /orden/:id -> planificación de cada línea de mano de obra de la orden:
+// { autoPlanificar, lineas: [{ lineaId, planificado, trabajoId, fecha, inicio, mecanicoId }] }.
+router.get('/orden/:id', async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id)
+    if (id === null) return res.status(400).json({ error: 'Identificador de orden no válido' })
+    if (!(await prisma.ordenReparacion.findUnique({ where: { id }, select: { id: true } }))) {
+      return res.status(404).json({ error: 'Orden no encontrada' })
+    }
+    const { autoPlanificar } = await leerConfig(prisma)
+    return res.json({ autoPlanificar, lineas: await planificacionDeOrden(prisma, id) })
+  } catch (error) { return next(error) }
+})
+
+// POST /orden/:id/mano-obra/:lineaId/planificar -> planifica a mano una línea que
+// quedó sin planificar (también con la planificación automática desactivada).
+router.post('/orden/:id/mano-obra/:lineaId/planificar', async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id)
+    const lineaId = parseId(req.params.lineaId)
+    if (id === null || lineaId === null) return res.status(400).json({ error: 'Identificador no válido' })
+    const resultado = await enTransaccion(res, async (db) => {
+      const orden = await db.ordenReparacion.findUnique({ where: { id } })
+      const linea = await db.ordenManoObra.findUnique({ where: { id: lineaId } })
+      if (!orden || !linea || linea.ordenId !== id) return null
+      if (!(Number(linea.tiempo) > 0)) throw new ErrorDatos('La línea no tiene tiempo: no se puede planificar')
+      await planificarLinea(db, linea, orden, { forzar: true })
+      return { lineas: await planificacionDeOrden(db, id) }
+    })
+    if (resultado === null) return res.status(404).json({ error: 'Línea de mano de obra no encontrada en la orden' })
+    if (resultado) res.json(resultado)
+    return undefined
   } catch (error) { return next(error) }
 })
 

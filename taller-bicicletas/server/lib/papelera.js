@@ -1,4 +1,5 @@
 import { normalizarEstado } from './estados.js'
+import { planificarLineasOrden } from './agendaOrdenes.js'
 
 
 // Papelera: guarda una instantánea de cada registro borrado para poder
@@ -275,6 +276,7 @@ async function restaurarOrden(tx, { orden: ordenOriginal, materiales = [], manoO
   }
   if (!(await idLibre(tx.ordenReparacion, orden.id))) delete orden.id
   const creada = await tx.ordenReparacion.create({ data: orden })
+  const lineasCreadas = []
   for (const material of materiales) {
     const datos = { ...(await prepararMaterial(tx, material)), ordenId: creada.id }
     if (!(await idLibre(tx.ordenMaterial, datos.id))) delete datos.id
@@ -283,8 +285,9 @@ async function restaurarOrden(tx, { orden: ordenOriginal, materiales = [], manoO
   for (const linea of manoObra) {
     const datos = { ...linea, ordenId: creada.id }
     if (!(await idLibre(tx.ordenManoObra, datos.id))) delete datos.id
-    await tx.ordenManoObra.create({ data: datos })
+    lineasCreadas.push(await tx.ordenManoObra.create({ data: datos }))
   }
+  await planificarLineasOrden(tx, creada, lineasCreadas)
 }
 
 // Si el artículo de una línea ya no existe, la línea se recrea sin el enlace
@@ -312,8 +315,9 @@ async function restaurarLineaManoObra(tx, { linea }) {
   if (!orden) throw new ErrorPapelera('No se puede restaurar la línea porque su orden ya no existe.')
   const datos = { ...linea }
   if (!(await idLibre(tx.ordenManoObra, datos.id))) delete datos.id
-  await tx.ordenManoObra.create({ data: datos })
+  const restaurada = await tx.ordenManoObra.create({ data: datos })
   await recalcularTotalesOrden(tx, linea.ordenId)
+  await planificarLineasOrden(tx, orden, [restaurada])
 }
 
 // Recalcula y guarda los totales de una orden a partir de sus líneas. Replica la

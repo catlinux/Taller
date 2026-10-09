@@ -191,6 +191,7 @@ export default function OrdenDetalle() {
         sucioRef.current = false
         queryClient.invalidateQueries(['ordenes'])
         queryClient.invalidateQueries(['orden', String(ordenGuardada.id)])
+        queryClient.invalidateQueries(['agenda'])
         if (esNueva) navigate(`/ordenes/${ordenGuardada.id}`)
         else setForm((actual) => ({ ...actual, numeroOrden: ordenGuardada.numeroOrden ?? actual.numeroOrden }))
       },
@@ -217,7 +218,7 @@ export default function OrdenDetalle() {
         mostrarDeshacer({
           descripcion: `la orden ${form.numeroOrden || id}`,
           papeleraId: resultado?.papeleraId,
-          onRestaurar: () => queryClient.invalidateQueries(['ordenes']),
+          onRestaurar: () => { queryClient.invalidateQueries(['ordenes']); queryClient.invalidateQueries(['agenda']) },
         })
         navigate('/ordenes')
       },
