@@ -6,6 +6,13 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.18.0] - 2026-10-09
+
+### Añadido
+
+- Horario y horas máximas propios de cada mecánico en la agenda, editables en Configuración > Mecánicos (vacío = los del taller). El calendario aplica la precedencia ajuste del día > mecánico > taller, y la planificación lo respeta.
+- API: `agendaTramos` y `agendaHorasMaximas` en `/api/mecanicos`.
+
 ## [1.17.0] - 2026-10-09
 
 ### Añadido

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
 import { guardarEnPapelera, descripcionMecanico } from '../lib/papelera.js'
+import { validarTramos, validarHorasMaximas } from '../lib/agenda.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -11,7 +12,17 @@ function parseId(value) {
   return Number.isInteger(id) && id > 0 ? id : null
 }
 
-const CAMPOS_PUBLICOS = { id: true, nombre: true, activo: true }
+const CAMPOS_PUBLICOS = { id: true, nombre: true, activo: true, agendaTramos: true, agendaHorasMaximas: true }
+
+// Mecánico tal y como lo devuelve la API: el horario propio de la agenda como
+// array de tramos (o null si usa el del taller).
+function paraApi(mecanico) {
+  let agendaTramos = null
+  if (mecanico.agendaTramos) {
+    try { agendaTramos = JSON.parse(mecanico.agendaTramos) } catch { agendaTramos = null }
+  }
+  return { ...mecanico, agendaTramos }
+}
 
 function construirDatos(body, parcial = false) {
   const datos = {}
@@ -22,6 +33,25 @@ function construirDatos(body, parcial = false) {
   if (body.activo !== undefined) {
     if (typeof body.activo !== 'boolean') return { error: 'El campo activo debe ser booleano' }
     datos.activo = body.activo
+  }
+  // Horario y horas máximas propios de la agenda: null = los del taller.
+  if (body.agendaTramos !== undefined) {
+    if (body.agendaTramos === null) {
+      datos.agendaTramos = null
+    } else {
+      const { tramos, error } = validarTramos(body.agendaTramos)
+      if (error) return { error }
+      datos.agendaTramos = JSON.stringify(tramos)
+    }
+  }
+  if (body.agendaHorasMaximas !== undefined) {
+    if (body.agendaHorasMaximas === null) {
+      datos.agendaHorasMaximas = null
+    } else {
+      const { horasMaximas, error } = validarHorasMaximas(body.agendaHorasMaximas)
+      if (error) return { error }
+      datos.agendaHorasMaximas = horasMaximas
+    }
   }
   return { datos }
 }
@@ -35,7 +65,7 @@ router.get('/', async (req, res, next) => {
     const where = {}
     if (req.query.todos !== '1') where.activo = true
     const mecanicos = await prisma.mecanico.findMany({ where, select: CAMPOS_PUBLICOS, orderBy: { nombre: 'asc' } })
-    return res.json(mecanicos)
+    return res.json(mecanicos.map(paraApi))
   } catch (error) { return next(error) }
 })
 
@@ -47,7 +77,7 @@ router.post('/', roleMiddleware('admin'), async (req, res, next) => {
     if (existente) return res.status(409).json({ error: 'Ya existe un mecánico con ese nombre' })
     try {
       const mecanico = await prisma.mecanico.create({ data: datos, select: CAMPOS_PUBLICOS })
-      return res.status(201).json(mecanico)
+      return res.status(201).json(paraApi(mecanico))
     } catch (error) {
       if (esDuplicado(error)) return res.status(409).json({ error: 'Ya existe un mecánico con ese nombre' })
       throw error
@@ -70,7 +100,7 @@ router.put('/:id', roleMiddleware('admin'), async (req, res, next) => {
     }
     try {
       const mecanico = await prisma.mecanico.update({ where: { id }, data: datos, select: CAMPOS_PUBLICOS })
-      return res.json(mecanico)
+      return res.json(paraApi(mecanico))
     } catch (error) {
       if (esDuplicado(error)) return res.status(409).json({ error: 'Ya existe un mecánico con ese nombre' })
       throw error

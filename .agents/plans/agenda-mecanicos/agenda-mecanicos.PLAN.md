@@ -232,7 +232,7 @@ Partido en dos tareas.
 - **Terminado cuando**: hay pruebas reales contra la API (alta, edición, borrado, cambio de mecánico, fecha de entrada futura, orden de hoy por la tarde), capturas y `npm test` en verde.
 - **Ejecutor**: AgentRelay, esfuerzo alto (2 tareas: servidor e interfaz).
 
-### [ ] Paso 7: horario por mecánico (1.18.0, menor)
+### [x] Paso 7: horario por mecánico (1.18.0, menor)
 
 - Campos `agendaTramos` y `agendaHorasMaximas` en `Mecanico`, editables en Configuración > Mecánicos con `EditorTramos.jsx`. Vacíos = los del taller.
 - El calendario aplica la precedencia del diseño.
