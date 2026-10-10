@@ -28,7 +28,7 @@ function FichaCliente({ cliente, onCambiar }) {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Dato etiqueta="DNI" valor={cliente.dni} />
-        <Dato etiqueta="Teléfono" valor={cliente.telefono} />
+        <Dato etiqueta="Móvil" valor={cliente.telefono} />
         <Dato etiqueta="Correo" valor={cliente.email} />
         <Dato etiqueta="Dirección" valor={cliente.direccion} />
         <Dato etiqueta="Código postal" valor={cliente.codigoPostal} />
@@ -109,7 +109,7 @@ export default function ClienteSelector({ cliente, onChange, token }) {
           onChange={(event) => { setTexto(event.target.value); setAbierto(true); setActivo(-1) }}
           onFocus={() => setAbierto(true)}
           onKeyDown={manejarTeclas}
-          placeholder="Buscar por nº, nombre, DNI o teléfono…"
+          placeholder="Buscar por nº, nombre, DNI o móvil…"
           aria-label="Buscar cliente"
           className={inputClass}
         />

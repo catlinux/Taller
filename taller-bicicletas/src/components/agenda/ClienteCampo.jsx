@@ -48,7 +48,7 @@ export default function ClienteCampo({ token, cliente, onChange, etiqueta = 'Cli
             value={texto}
             onChange={(event) => { setTexto(event.target.value); setAbierto(true) }}
             onFocus={() => setAbierto(true)}
-            placeholder="Buscar por nº, nombre, DNI o teléfono…"
+            placeholder="Buscar por nº, nombre, DNI o móvil…"
             aria-label="Buscar cliente"
             className="input"
           />

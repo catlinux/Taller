@@ -404,7 +404,7 @@ export default function OrdenDetalle() {
             </div>
           </Tarjeta>
 
-          <Tarjeta titulo="Cliente" descripcion="Busca por nº, nombre, DNI o teléfono, o da de alta uno nuevo." className="flex-1">
+          <Tarjeta titulo="Cliente" descripcion="Busca por nº, nombre, DNI o móvil, o da de alta uno nuevo." className="flex-1">
             <ClienteSelector cliente={cliente} onChange={cambiarCliente} token={token} />
           </Tarjeta>
         </div>

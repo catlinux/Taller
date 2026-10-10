@@ -79,7 +79,7 @@ export default function Clientes() {
             { titulo: 'CP', valor: (c) => c.codigoPostal ?? '', ancho: 8 },
             { titulo: 'Población', valor: (c) => c.poblacion ?? '', ancho: 20 },
             { titulo: 'Provincia', valor: (c) => c.provincia ?? '', ancho: 16 },
-            { titulo: 'Teléfono', valor: (c) => c.telefono ?? '', ancho: 16 },
+            { titulo: 'Móvil', valor: (c) => c.telefono ?? '', ancho: 16 },
             { titulo: 'Correo', valor: (c) => c.email ?? '', ancho: 28 },
           ],
           filas: filtrados,
@@ -105,7 +105,7 @@ export default function Clientes() {
         </Link>
       ),
     },
-    { clave: 'telefono', titulo: 'Teléfono', ancho: '140px', valor: (c) => c.telefono, clase: 'text-slate-400' },
+    { clave: 'telefono', titulo: 'Móvil', ancho: '140px', valor: (c) => c.telefono, clase: 'text-slate-400' },
     { clave: 'direccion', titulo: 'Dirección', ancho: '24%', valor: (c) => c.direccion, clase: 'text-slate-400' },
     { clave: 'codigoPostal', titulo: 'CP', title: 'Código postal', ancho: '90px', valor: (c) => c.codigoPostal, clase: 'text-slate-400' },
     { clave: 'poblacion', titulo: 'Población', ancho: '16%', valor: (c) => c.poblacion, clase: 'text-slate-400' },
@@ -136,7 +136,7 @@ export default function Clientes() {
         <label className="relative block w-full sm:max-w-md">
           <span className="sr-only">Buscar clientes</span>
           <IconBuscar size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, email o teléfono…" className="input pl-10" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, email o móvil…" className="input pl-10" />
         </label>
         <p className="text-sm text-slate-500">{filtrados.length} {filtrados.length === 1 ? 'cliente' : 'clientes'}</p>
       </div>

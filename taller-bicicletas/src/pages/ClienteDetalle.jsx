@@ -96,7 +96,7 @@ export default function ClienteDetalle() {
           <Dato etiqueta="Código postal" valor={cliente.codigoPostal} />
           <Dato etiqueta="Población" valor={cliente.poblacion} />
           <Dato etiqueta="Provincia" valor={cliente.provincia} />
-          <Dato etiqueta="Teléfono" valor={cliente.telefono} />
+          <Dato etiqueta="Móvil" valor={cliente.telefono} />
           <Dato etiqueta="Correo" valor={cliente.email} />
         </div>
       </section>

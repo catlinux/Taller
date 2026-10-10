@@ -2,7 +2,7 @@ const campos = [
   ['nombre', 'Nombre', true],
   ['apellidos', 'Apellidos'],
   ['email', 'Email', true],
-  ['telefono', 'Teléfono'],
+  ['telefono', 'Móvil'],
   ['dni', 'DNI'],
   ['direccion', 'Dirección'],
   ['codigoPostal', 'Código postal'],

@@ -260,7 +260,7 @@ function construirFilasCliente(cliente) {
   const nombre = [cliente.nombre, cliente.apellidos].filter(Boolean).join(' ').trim()
   if (nombre) filas.push({ etiqueta: 'Nombre', valor: nombre })
   if (cliente.dni) filas.push({ etiqueta: 'DNI/NIF', valor: cliente.dni })
-  if (cliente.telefono) filas.push({ etiqueta: 'Teléfono', valor: cliente.telefono })
+  if (cliente.telefono) filas.push({ etiqueta: 'Móvil', valor: cliente.telefono })
   if (cliente.email) filas.push({ etiqueta: 'Correo', valor: cliente.email })
   const cpPoblacion = [cliente.codigoPostal, cliente.poblacion].filter(Boolean).join(' ').trim()
   const direccion = [cliente.direccion, cpPoblacion, cliente.provincia].filter(Boolean).join(', ')

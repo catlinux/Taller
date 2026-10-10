@@ -6,6 +6,12 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.18.1] - 2026-10-10
+
+### Cambiado
+
+- El campo de contacto del cliente se muestra como «Móvil» en lugar de «Teléfono» (formulario, ficha, listado, exportaciones, selector de cliente, buscadores y PDF de la orden). El dato sigue guardado en el mismo campo, así que no cambia la base de datos, la importación ni la exportación a Factusol. Los datos de la empresa siguen como «Teléfono».
+
 ## [1.18.0] - 2026-10-09
 
 ### Añadido
