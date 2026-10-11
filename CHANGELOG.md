@@ -6,6 +6,15 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.20.3] - 2026-10-11
+
+### Cambiado
+
+- El estado «Esperando material» pasa a mostrarse como «Pedido» (el valor guardado no cambia).
+- Órdenes: Cliente ocupa el espacio libre, Marca y Modelo tienen ancho fijo con tooltip en la cabecera, y Estado y Pago son más estrechas, de modo que la columna Total se ve entera.
+- Clientes: tooltip en la cabecera Población.
+- Artículos: la tabla ya no muestra Proveedor (la exportación sí), Descripción ocupa el espacio libre, precios, stock y acciones son más estrechos, y la página hace scroll entera como Clientes en lugar de tener un scroll interno.
+
 ## [1.20.2] - 2026-10-11
 
 ### Cambiado

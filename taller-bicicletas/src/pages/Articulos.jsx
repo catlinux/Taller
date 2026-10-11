@@ -131,21 +131,20 @@ export default function Articulos() {
 
   const columnas = [
     { clave: 'referencia', titulo: 'Referencia', title: 'Referencia: código interno del artículo', ancho: '140px', valor: (a) => a.referencia, clase: 'font-medium text-white' },
-    { clave: 'descripcion', titulo: 'Descripción', title: 'Descripción del artículo', ancho: '300px', valor: (a) => a.descripcion, clase: 'text-slate-400' },
+    { clave: 'descripcion', titulo: 'Descripción', title: 'Descripción del artículo', valor: (a) => a.descripcion, clase: 'text-slate-400' },
     { clave: 'familia', titulo: 'Familia', title: 'Familia o categoría del artículo', ancho: '130px', valor: (a) => a.familia, clase: 'text-slate-400' },
-    { clave: 'proveedor', titulo: 'Proveedor', title: 'Proveedor habitual del artículo', ancho: '130px', valor: (a) => a.proveedor, clase: 'text-slate-400' },
     {
-      clave: 'precioCompra', titulo: 'Compra', title: 'Precio de compra (sin IVA)', ancho: '110px', tipo: 'numero', alinear: 'der',
+      clave: 'precioCompra', titulo: 'Compra', title: 'Precio de compra (sin IVA)', ancho: '100px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.precioCompra,
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioCompra).toFixed(2)} €</span>,
     },
     {
-      clave: 'precioVentaSinIva', titulo: 'Venta s/IVA', title: 'Precio de venta sin IVA (base imponible)', ancho: '125px', tipo: 'numero', alinear: 'der',
+      clave: 'precioVentaSinIva', titulo: 'Venta s/IVA', title: 'Precio de venta sin IVA (base imponible)', ancho: '110px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.precioVentaSinIva,
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioVentaSinIva).toFixed(2)} €</span>,
     },
     {
-      clave: 'precioVenta', titulo: 'Venta c/IVA', title: 'Precio de venta (con IVA incluido)', ancho: '125px', tipo: 'numero', alinear: 'der',
+      clave: 'precioVenta', titulo: 'Venta c/IVA', title: 'Precio de venta (con IVA incluido)', ancho: '110px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.precioVenta,
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioVenta).toFixed(2)} €</span>,
     },
@@ -155,24 +154,24 @@ export default function Articulos() {
       render: (a) => <span className="block truncate text-slate-400">{a.iva} %</span>,
     },
     {
-      clave: 'stock', titulo: 'Stock', title: 'Unidades disponibles en almacén', ancho: '90px', tipo: 'numero', alinear: 'der',
+      clave: 'stock', titulo: 'Stock', title: 'Unidades disponibles en almacén', ancho: '80px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.stock,
       render: (a) => <span className={`block truncate ${a.stock <= 5 ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{a.stock}</span>,
     },
   ]
 
   const acciones = (articulo) => (
-    <>
-      <button type="button" onClick={() => abrirEditar(articulo)} title="Editar" aria-label={`Editar ${articulo.referencia}`} className="btn-ghost px-2 py-1.5 text-azul-300">
+    <div className="flex items-center gap-0">
+      <button type="button" onClick={() => abrirEditar(articulo)} title="Editar" aria-label={`Editar ${articulo.referencia}`} className="btn-ghost px-1.5 py-2 text-azul-300">
         <IconEditar size={16} />
       </button>
-      <button type="button" onClick={() => abrirAjuste(articulo)} title="Ajustar stock" aria-label={`Ajustar stock de ${articulo.referencia}`} className="btn-ghost px-2 py-1.5 text-amber-300">
+      <button type="button" onClick={() => abrirAjuste(articulo)} title="Ajustar stock" aria-label={`Ajustar stock de ${articulo.referencia}`} className="btn-ghost px-1.5 py-2 text-amber-300">
         <IconAjustarStock size={16} />
       </button>
-      <button type="button" disabled={eliminar.isLoading} onClick={() => confirmarEliminar(articulo)} title="Eliminar" aria-label={`Eliminar ${articulo.referencia}`} className="btn-ghost px-2 py-1.5 text-rose-300 disabled:opacity-50">
+      <button type="button" disabled={eliminar.isLoading} onClick={() => confirmarEliminar(articulo)} title="Eliminar" aria-label={`Eliminar ${articulo.referencia}`} className="btn-ghost px-1.5 py-2 text-rose-300 disabled:opacity-50">
         <IconPapelera size={16} />
       </button>
-    </>
+    </div>
   )
 
   function abrirCrear() { setArticuloEditando(null); setErrorAccion(''); setModalAbierto(true) }
@@ -257,9 +256,8 @@ export default function Articulos() {
         etiquetaPlural="artículos"
         claveReinicio={search}
         primeraColumnaFija
-        anchoAcciones={150}
+        anchoAcciones={120}
         accionesFijas
-        scrollInterno
         vacio={search ? 'No hay artículos que coincidan con la búsqueda.' : 'Todavía no hay artículos registrados.'}
       />
       {modalAbierto && <ArticuloModal articulo={articuloEditando} onSubmit={guardar} onClose={cerrarModal} isSaving={guardando} />}

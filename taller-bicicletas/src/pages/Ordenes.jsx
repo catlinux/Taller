@@ -86,22 +86,22 @@ export default function Ordenes() {
       render: (o) => <span className={`block whitespace-nowrap ${fechaPrevistaVencida(o) ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{formatearFecha(o.fechaPrevista)}</span>,
     },
     {
-      clave: 'cliente', titulo: 'Cliente', ancho: '40%',
+      clave: 'cliente', titulo: 'Cliente',
       valor: (o) => nombreCompleto(o.cliente),
       render: (o) => (
         <div className="whitespace-nowrap" title={`#${o.cliente?.numeroCliente ?? ''} ${nombreCompleto(o.cliente)}`.trim()}>
-          <span className="block text-slate-300">#{o.cliente?.numeroCliente}</span>
-          <span className="block text-slate-400">{nombreCompleto(o.cliente)}</span>
+          <span className="block truncate text-slate-300">#{o.cliente?.numeroCliente}</span>
+          <span className="block truncate text-slate-400">{nombreCompleto(o.cliente)}</span>
         </div>
       ),
     },
     {
-      clave: 'marca', titulo: 'Marca', ancho: '14%', valor: (o) => o.bicicleta?.marca,
-      render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.bicicleta?.marca || ''}>{o.bicicleta?.marca || '—'}</span>,
+      clave: 'marca', titulo: 'Marca', title: 'Marca de la bicicleta', ancho: '110px', valor: (o) => o.bicicleta?.marca,
+      render: (o) => <span className="block truncate whitespace-nowrap text-slate-400" title={o.bicicleta?.marca || ''}>{o.bicicleta?.marca || '—'}</span>,
     },
     {
-      clave: 'modelo', titulo: 'Modelo', ancho: '16%', valor: (o) => o.bicicleta?.modelo,
-      render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.bicicleta?.modelo || ''}>{o.bicicleta?.modelo || '—'}</span>,
+      clave: 'modelo', titulo: 'Modelo', title: 'Modelo de la bicicleta', ancho: '120px', valor: (o) => o.bicicleta?.modelo,
+      render: (o) => <span className="block truncate whitespace-nowrap text-slate-400" title={o.bicicleta?.modelo || ''}>{o.bicicleta?.modelo || '—'}</span>,
     },
     {
       clave: 'tipoReparacion', titulo: 'Tipo', ancho: '130px',
@@ -112,12 +112,12 @@ export default function Ordenes() {
       },
     },
     {
-      clave: 'estado', titulo: 'Estado', ancho: '150px', tipo: 'numero',
+      clave: 'estado', titulo: 'Estado', ancho: '130px', tipo: 'numero',
       valor: (o) => ordenEstados.indexOf(o.estado),
       render: (o) => <EstadoBadge estado={o.estado} />,
     },
     {
-      clave: 'formaPago', titulo: 'Pago', ancho: '120px',
+      clave: 'formaPago', titulo: 'Pago', ancho: '110px',
       valor: (o) => o.formaPago || '',
       render: (o) => (o.formaPago ? <PagoBadge formaPago={o.formaPago} /> : <span className="text-slate-500">—</span>),
     },
