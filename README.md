@@ -22,6 +22,8 @@ npm run dev                 # front http://localhost:5173, API :3001
 
 La demo incluye los mecánicos **Zipi** y **Zape** y la empresa ficticia *Rompecadenas Bike Workshop, S.L.*
 
+En **Configuración > Sesión y seguridad > «Entrar sin iniciar sesión»** se puede entrar directamente como el primer administrador activo. Cualquiera que pueda abrir la aplicación desde la red tendrá acceso de administrador, así que actívalo solo si el ordenador y la red del taller son de confianza. El nombre que se muestra del administrador se cambia en **Configuración > Usuarios > editar > Nombre**.
+
 ## Cómo instalar (tres métodos)
 
 Todas las formas parten del mismo repositorio (`https://github.com/catlinux/Taller.git`) y dejan los mismos usuarios iniciales. Elige la que encaje con tu máquina:

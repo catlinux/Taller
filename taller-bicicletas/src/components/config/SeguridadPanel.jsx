@@ -1,18 +1,24 @@
 import { AvisoSoloAdmin, Interruptor, PieGuardar, usePanelAjustes } from './comunes.jsx'
 
-const CLAVES = ['sesionHoras', 'bloqueoInactividadMinutos', 'pinActivado', 'pinMinutosInactividad']
+const CLAVES = ['inicioSesionDesactivado', 'sesionHoras', 'bloqueoInactividadMinutos', 'pinActivado', 'pinMinutosInactividad']
 
 // Convierte el texto de un input numérico en número (o '' si está vacío).
 const aNumero = (valor) => (valor === '' ? '' : Number(valor))
 
 export default function SeguridadPanel() {
-  const { borrador, actualizar, descartar, guardar, hayCambios, estado, mensaje, esAdmin, guardando } =
+  const { base, borrador, actualizar, descartar, guardar, hayCambios, estado, mensaje, esAdmin, guardando } =
     usePanelAjustes(CLAVES)
 
+  const inicioSesionDesactivado = Boolean(borrador.inicioSesionDesactivado)
   const horas = Number(borrador.sesionHoras) || 0
   const pinActivado = Boolean(borrador.pinActivado)
   const minutosPin = Number(borrador.pinMinutosInactividad) || 0
   const minutosCierre = Number(borrador.bloqueoInactividadMinutos) || 0
+  const guardarConConfirmacion = () => {
+    if (!Boolean(base.inicioSesionDesactivado) && inicioSesionDesactivado &&
+      !window.confirm('Cualquiera que pueda abrir la aplicación desde la red tendrá acceso de administrador. ¿Quieres activar esta opción?')) return
+    guardar()
+  }
 
   // Avisos de coherencia entre los ajustes de inactividad (no bloquean el guardado).
   const avisos = []
@@ -33,6 +39,26 @@ export default function SeguridadPanel() {
       </p>
 
       {!esAdmin && <div className="mt-5"><AvisoSoloAdmin /></div>}
+
+      <section className="mt-6 space-y-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Acceso</h3>
+
+        <div className="flex items-center justify-between gap-4">
+          <label htmlFor="inicio-sesion-desactivado" className="text-sm text-slate-300">
+            Entrar sin iniciar sesión
+          </label>
+          <Interruptor
+            id="inicio-sesion-desactivado"
+            etiqueta="Entrar sin iniciar sesión"
+            checked={inicioSesionDesactivado}
+            onChange={(valor) => actualizar('inicioSesionDesactivado', valor)}
+            disabled={!esAdmin}
+          />
+        </div>
+        <p className={`rounded-lg border px-4 py-3 text-sm ${inicioSesionDesactivado ? 'border-naranja-500/30 bg-naranja-500/10 text-naranja-300' : 'border-antracita-700 bg-antracita-900/60 text-slate-400'}`}>
+          Al abrir la aplicación se entra directamente como el primer administrador activo, sin usuario ni contraseña. Cualquiera que pueda abrir la aplicación desde la red tendrá acceso de administrador: actívalo solo si el ordenador y la red del taller son de confianza.
+        </p>
+      </section>
 
       <section className="mt-6 space-y-5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sesión</h3>
@@ -141,7 +167,7 @@ export default function SeguridadPanel() {
         guardando={guardando}
         estado={estado}
         mensaje={mensaje}
-        onGuardar={guardar}
+        onGuardar={guardarConConfirmacion}
         onDescartar={descartar}
       />
     </div>

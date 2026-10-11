@@ -223,16 +223,20 @@ export default function Layout() {
                     Bloquear ahora
                   </button>
                 )}
-                <div className="my-1 border-t border-antracita-700" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { setMenuUsuarioAbierto(false); logout() }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-peligro transition hover:bg-antracita-700"
-                >
-                  <IconSalir size={16} />
-                  Cerrar sesión
-                </button>
+                {!ajustes?.inicioSesionDesactivado && (
+                  <>
+                    <div className="my-1 border-t border-antracita-700" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setMenuUsuarioAbierto(false); logout() }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-peligro transition hover:bg-antracita-700"
+                    >
+                      <IconSalir size={16} />
+                      Cerrar sesión
+                    </button>
+                  </>
+                )}
               </div>
             </>
           )}

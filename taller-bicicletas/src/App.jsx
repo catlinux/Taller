@@ -26,11 +26,14 @@ function ProtectedLayout() {
 }
 
 export default function App() {
-  const { token } = useAuth()
+  const { token, isLoading } = useAuth()
   return (
     <Suspense fallback={<div className="grid min-h-screen place-items-center text-slate-400">Cargando…</div>}>
       <Routes>
-        <Route path="/login" element={token ? <Navigate to="/" replace /> : <Login />} />
+        <Route
+          path="/login"
+          element={token ? <Navigate to="/" replace /> : isLoading ? <div className="grid min-h-screen place-items-center text-slate-400">Cargando sesión…</div> : <Login />}
+        />
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Navigate to="/" replace />} />

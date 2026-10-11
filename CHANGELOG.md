@@ -6,6 +6,12 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.20.0] - 2026-10-11
+
+### Añadido
+
+- Ajuste «Entrar sin iniciar sesión» para acceder automáticamente como el primer administrador activo. API: `GET /api/auth/acceso` y `POST /api/auth/automatico`.
+
 ## [1.19.0] - 2026-10-11
 
 ### Añadido
