@@ -8,6 +8,7 @@ const campos = [
   ['codigoPostal', 'Código postal'],
   ['poblacion', 'Población'],
   ['provincia', 'Provincia'],
+  ['pais', 'País'],
 ]
 
 export default function ClienteForm({ cliente, onSubmit, onCancel, isSaving }) {

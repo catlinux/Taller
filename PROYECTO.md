@@ -112,7 +112,7 @@ Acciones de la orden:
 - `taller-bicicletas/server`: Node 24 + Express 4, Prisma + SQLite (`prisma/dev.db`), JWT de 8 h y bcryptjs. Puerto 3001.
 - `taller-bicicletas/src`: React 18 + Vite, Tailwind, react-query v3 y React Router v6. Es una PWA. Las llamadas a la API pasan por un único módulo `src/lib/api.js`.
 - PDF con jsPDF + jspdf-autotable, Excel con xlsx.
-- Importación: `npm run db:import:clientes`, `db:import:articulos` y `db:import:bicicletas`. Son idempotentes y admiten `--dry-run`.
+- Importación: `npm run db:import:clientes` (acepta .xlsx o .csv), `db:import:articulos` y `db:import:bicicletas`. Son idempotentes y admiten `--dry-run`.
 - Desarrollo: `npm run dev` arranca el backend (con reinicio automático) y el frontend (con recarga en caliente).
 
 ## Criterios de aceptación

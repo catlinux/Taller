@@ -22,7 +22,9 @@ const rutaArg = argumentos.find((arg) => !arg.startsWith('--'))
 const RUTA_CSV = rutaArg ? path.resolve(process.cwd(), rutaArg) : RUTA_POR_DEFECTO
 
 async function importar() {
-  const texto = fs.readFileSync(RUTA_CSV, 'utf8')
+  const texto = /.xlsx?$/i.test(RUTA_CSV)
+    ? fs.readFileSync(RUTA_CSV).toString('base64')
+    : fs.readFileSync(RUTA_CSV, 'utf8')
   const resumen = await importarClientes(prisma, texto, { simular: modoDryRun })
 
   const totalOmitidos = resumen.omitidos.reduce((suma, omision) => suma + omision.cantidad, 0)

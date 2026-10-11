@@ -6,6 +6,7 @@ import {
   importarArticulos,
   importarBicicletas,
   importarTrabajos,
+  plantillaClientesXlsx,
   IMPORTACIONES,
 } from './importar.js'
 
@@ -157,7 +158,7 @@ test('importarClientes crea, actualiza y omite duplicados y filas inválidas', a
   assert.deepEqual(resumen.omitidos, [
     { motivo: 'sin código válido', cantidad: 1 },
     { motivo: 'sin nombre', cantidad: 1 },
-    { motivo: 'duplicado en el CSV', cantidad: 1 },
+    { motivo: 'duplicado en el fichero', cantidad: 1 },
     { motivo: 'fila de totales o vacía', cantidad: 1 },
   ])
 
@@ -191,6 +192,60 @@ test('importarClientes con simular no escribe nada', async () => {
   assert.equal(prisma.clientesMap.get(1).nombre, 'Antiguo')
 })
 
+
+// Excel de clientes en base64 con las cabeceras del informe del ERP.
+function excelClientes(filas) {
+  const cabecera = ['Código', 'Nombre fiscal', 'N.I.F.', 'Móvil', 'E-mail', 'Domicilio', 'Cód. Postal', 'Población', 'Provincia', 'País']
+  const hoja = XLSX.utils.aoa_to_sheet([['EMPRESA INVENTADA'], [], cabecera, ...filas])
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja, 'Vista previa')
+  return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }).toString('base64')
+}
+
+test('importarClientes lee el Excel: móvil, email, país, duplicados y código postal numérico', async () => {
+  const prisma = crearPrismaFalso({
+    clientes: [{ numeroCliente: 1, nombre: 'Antiguo', direccion: 'Calle vieja', email: 'viejo@x.es', telefono: null }],
+  })
+  const contenido = excelClientes([
+    [1, 'Ana Inventada', null, '600 00 00 01', null, null, 8001, 'Barcelona', null, 'ESPAÑA'],
+    [2, 'Bruno Inventado', '22222222J', '600000002', 'b@x.es', 'C/ Falsa 2', '43500', 'Tortosa', 'TARRAGONA', null],
+    [2, 'Bruno Duplicado'],
+    [null, 'Sin código'],
+    [3, null],
+  ])
+  const resumen = await importarClientes(prisma, contenido)
+
+  assert.equal(resumen.formato, 'xlsx')
+  assert.equal(resumen.leidos, 2)
+  assert.equal(resumen.creados, 1)
+  assert.equal(resumen.actualizados, 1)
+  // El existente conserva lo que el Excel trae vacío y recibe lo nuevo.
+  const ana = prisma.clientesMap.get(1)
+  assert.equal(ana.nombre, 'Ana Inventada')
+  assert.equal(ana.direccion, 'Calle vieja')
+  assert.equal(ana.email, 'viejo@x.es')
+  assert.equal(ana.telefono, '600 00 00 01')
+  assert.equal(ana.codigoPostal, '08001')
+  assert.equal(ana.pais, 'ESPAÑA')
+  const bruno = prisma.clientesMap.get(2)
+  assert.equal(bruno.dni, '22222222J')
+  assert.equal(bruno.email, 'b@x.es')
+  assert.equal(bruno.telefono, '600000002')
+  assert.equal(bruno.codigoFactusol, 2)
+})
+
+test('importarClientes rechaza un Excel sin cabeceras y la plantilla se importa bien', async () => {
+  const hoja = XLSX.utils.aoa_to_sheet([['nada'], [1, 2]])
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja, 'X')
+  const malo = XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }).toString('base64')
+  await assert.rejects(importarClientes(crearPrismaFalso(), malo), /cabeceras/)
+
+  const prisma = crearPrismaFalso()
+  const resumen = await importarClientes(prisma, plantillaClientesXlsx().toString('base64'))
+  assert.equal(resumen.creados, 1)
+  assert.equal(prisma.clientesMap.get(9999).pais, 'ESPAÑA')
+})
 
 // --- Artículos ------------------------------------------------------------
 

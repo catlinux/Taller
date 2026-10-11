@@ -85,6 +85,7 @@ model Cliente {
   provincia     String?
   telefono      String?
   email         String?
+  pais          String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 

@@ -6,7 +6,7 @@ import { IconFlechaArriba } from '../Icons.jsx'
 
 // Descripción de las tarjetas de importación (en el orden en que hay que subirlas).
 const TARJETAS = [
-  { tipo: 'clientes', titulo: 'Clientes', columnas: 'Cód;Nombre;Domicilio;C.P.;Población;Provincia;Teléfono;NIF' },
+  { tipo: 'clientes', titulo: 'Clientes', columnas: 'Excel (.xlsx): Código, Nombre fiscal, N.I.F., Móvil, E-mail, Domicilio, Cód. Postal, Población, Provincia, País. También vale el CSV antiguo (Cód;Nombre;Domicilio;C.P.;Población;Provincia;Teléfono;NIF)', admiteExcel: true, plantilla: '/api/importar/plantilla/clientes' },
   { tipo: 'articulos', titulo: 'Artículos', columnas: 'Código;Descripción;Referencia;Prov.;P.Costo;P.Venta;Stock, agrupados por familia' },
   { tipo: 'bicicletas', titulo: 'Bicicletas', columnas: 'CLIENT;MARCA;MODEL;Nº SERIE;CATEGORIA' },
   { tipo: 'trabajos', titulo: 'Tiempos de trabajos', columnas: 'Excel con categorías y tiempos HH:MM por trabajo (Tiempos sexagesimales)', binario: true },
@@ -97,7 +97,7 @@ function ResultadoImportacion({ resultado }) {
 }
 
 // Tarjeta de importación de un tipo de dato: fichero -> simulación -> importación.
-function TarjetaImportacion({ tipo, titulo, columnas, binario = false }) {
+function TarjetaImportacion({ tipo, titulo, columnas, binario = false, admiteExcel = false, plantilla = null }) {
   const { token } = useAuth()
   const queryClient = useQueryClient()
   const inputRef = useRef(null)
@@ -141,7 +141,8 @@ function TarjetaImportacion({ tipo, titulo, columnas, binario = false }) {
     setResultado(null)
     setNombreFichero(fichero.name)
     try {
-      const datos = binario ? await leerBase64Fichero(fichero) : await leerTextoFichero(fichero)
+      const esExcel = binario || (admiteExcel && /.xlsx?$/i.test(fichero.name))
+      const datos = esExcel ? await leerBase64Fichero(fichero) : await leerTextoFichero(fichero)
       setContenido(datos)
       simular.mutate(datos)
     } catch {
@@ -162,6 +163,27 @@ function TarjetaImportacion({ tipo, titulo, columnas, binario = false }) {
     if (inputRef.current) inputRef.current.value = ''
   }
 
+  async function descargarPlantilla() {
+    setError('')
+    try {
+      const respuesta = await fetch(plantilla, { headers: { Authorization: `Bearer ${token}` } })
+      if (!respuesta.ok) {
+        if (respuesta.status === 401) window.dispatchEvent(new Event('auth:expired'))
+        throw new Error('No se pudo descargar la plantilla.')
+      }
+      const url = URL.createObjectURL(await respuesta.blob())
+      const enlace = document.createElement('a')
+      enlace.href = url
+      enlace.download = `plantilla-${tipo}.xlsx`
+      document.body.appendChild(enlace)
+      enlace.click()
+      enlace.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   function importarDeVerdad() {
     const nuevos = resumen?.creados ?? 0
     const actualizados = resumen?.actualizados ?? 0
@@ -179,11 +201,17 @@ function TarjetaImportacion({ tipo, titulo, columnas, binario = false }) {
         Columnas esperadas: <span className="text-slate-300">{columnas}</span>
       </p>
 
+      {plantilla && (
+        <button type="button" onClick={descargarPlantilla} className="btn-secondary mt-3">
+          Descargar plantilla Excel
+        </button>
+      )}
+
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           ref={inputRef}
           type="file"
-          accept={binario ? '.xlsx,.xls' : '.csv,text/csv,.txt'}
+          accept={binario ? '.xlsx,.xls' : admiteExcel ? '.xlsx,.xls,.csv,text/csv,.txt' : '.csv,text/csv,.txt'}
           onChange={alElegirFichero}
           disabled={cargando}
           aria-label={`Fichero de ${titulo}`}
@@ -235,7 +263,7 @@ export default function ImportarPanel() {
     <div>
       <h2 className="text-lg font-semibold text-white">Importar datos</h2>
       <p className="mt-1 text-sm text-slate-400">
-        Sube los listados del ERP en CSV. Lo que ya existe se actualiza (por código de cliente, referencia de artículo o serie de bicicleta) y nada se borra. Importa en este orden: clientes, artículos y bicicletas (las bicicletas necesitan que sus clientes ya estén).
+        Sube los listados del ERP (clientes en Excel o CSV; el resto en CSV). Lo que ya existe se actualiza (por código de cliente, referencia de artículo o serie de bicicleta) y nada se borra. Importa en este orden: clientes, artículos y bicicletas (las bicicletas necesitan que sus clientes ya estén).
       </p>
 
       {modoDemo && (

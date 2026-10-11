@@ -8,6 +8,7 @@ import {
 import { sinStockDesdeNuevo } from './stock.js'
 import { leerExcelTiempos, prefijoCategoria } from './tiemposTrabajos.js'
 import { normalizarTexto } from './texto.js'
+import XLSX from 'xlsx'
 
 // Importaciones masivas desde los listados exportados del ERP antiguo.
 //
@@ -44,12 +45,52 @@ function resumenOmitidos(omitidos) {
 
 // --- Clientes -------------------------------------------------------------
 
-// Clasifica una fila del CSV de clientes: { cliente } o { motivo } de la omisión.
-function clasificarCliente(campos) {
-  const codigo = (campos[0] ?? '').trim()
+// Acepta el listado de clientes en dos formatos: el Excel (.xlsx, llega en base64)
+// y el CSV antiguo (texto). El Excel en base64 empieza siempre por «UEsD» («PK», zip).
+const PREFIJO_XLSX_BASE64 = 'UEsD'
+
+function esExcelBase64(contenido) {
+  return typeof contenido === 'string' && contenido.startsWith(PREFIJO_XLSX_BASE64)
+}
+
+// Columnas del Excel «Listado de clientes personalizado» y su campo en la base de
+// datos. «Móvil» es el campo telefono (la interfaz lo muestra como Móvil).
+export const COLUMNAS_CLIENTES = [
+  { cabecera: 'Código', campo: 'numeroCliente', alias: ['cod', 'cód'] },
+  { cabecera: 'Nombre fiscal', campo: 'nombre', alias: ['nombre'] },
+  { cabecera: 'N.I.F.', campo: 'dni', alias: ['nif', 'dni'] },
+  { cabecera: 'Móvil', campo: 'telefono', alias: ['movil', 'teléfono', 'telefono'] },
+  { cabecera: 'E-mail', campo: 'email', alias: ['email', 'correo'] },
+  { cabecera: 'Domicilio', campo: 'direccion', alias: ['direccion', 'dirección'] },
+  { cabecera: 'Cód. Postal', campo: 'codigoPostal', alias: ['c.p.', 'c.postal', 'codigo postal', 'código postal'] },
+  { cabecera: 'Población', campo: 'poblacion', alias: ['poblacion'] },
+  { cabecera: 'Provincia', campo: 'provincia', alias: [] },
+  { cabecera: 'País', campo: 'pais', alias: ['pais'] },
+]
+
+function claveCabecera(texto) {
+  return String(texto ?? '').trim().toLowerCase()
+}
+
+// Texto de una celda: recorta, convierte números a texto y vacío => null.
+function textoCelda(valor) {
+  if (valor == null) return null
+  const texto = String(valor).trim()
+  return texto === '' ? null : texto
+}
+
+// Un código postal numérico pierde el cero inicial (08001 -> 8001).
+function codigoPostalCelda(valor) {
+  const texto = textoCelda(valor)
+  return texto && /^\d{1,4}$/.test(texto) ? texto.padStart(5, '0') : texto
+}
+
+// Arma el cliente a partir de los campos ya extraídos; { motivo } si no vale.
+function clienteDeCampos(c) {
+  const codigo = String(c.numeroCliente ?? '').trim()
   // El código debe ser un entero; se ignora cualquier otra cosa.
   if (!/^\d+$/.test(codigo)) return { motivo: 'sin código válido' }
-  const nombre = (campos[1] ?? '').trim()
+  const nombre = (c.nombre ?? '').trim()
   if (nombre === '') return { motivo: 'sin nombre' }
   return {
     cliente: {
@@ -58,30 +99,50 @@ function clasificarCliente(campos) {
       codigoFactusol: Number(codigo),
       nombre,
       apellidos: null,
-      direccion: textoONull(campos[2]),
-      codigoPostal: textoONull(campos[3]),
-      poblacion: textoONull(campos[4]),
-      provincia: textoONull(campos[5]),
-      telefono: textoONull(campos[6]),
-      dni: textoONull(campos[7]),
+      direccion: c.direccion ?? null,
+      codigoPostal: c.codigoPostal ?? null,
+      poblacion: c.poblacion ?? null,
+      provincia: c.provincia ?? null,
+      pais: c.pais ?? null,
+      telefono: c.telefono ?? null,
+      email: c.email ?? null,
+      dni: c.dni ?? null,
     },
   }
 }
 
-// Lee y clasifica las líneas del listado de clientes.
-function leerClientes(lineas) {
+function nuevosOmitidos() {
+  return {
+    'sin código válido': 0,
+    'sin nombre': 0,
+    'duplicado en el fichero': 0,
+    'fila de totales o vacía': 0,
+  }
+}
+
+// Añade un cliente a la lista salvo que su código ya haya salido en el fichero.
+function acumularCliente(resultado, vistos, clientes, omitidos) {
+  if (resultado.motivo) {
+    omitidos[resultado.motivo]++
+    return
+  }
+  if (vistos.has(resultado.cliente.numeroCliente)) {
+    omitidos['duplicado en el fichero']++
+    return
+  }
+  vistos.add(resultado.cliente.numeroCliente)
+  clientes.push(resultado.cliente)
+}
+
+// Lee y clasifica las líneas del listado de clientes en CSV (formato antiguo).
+function leerClientesCsv(lineas) {
   const cabecera = indiceCabecera(lineas)
   if (cabecera === -1) {
     throw new Error('No se encontró la línea de cabeceras (Cód;) en el listado de clientes.')
   }
   const vistos = new Set()
   const clientes = []
-  const omitidos = {
-    'sin código válido': 0,
-    'sin nombre': 0,
-    'duplicado en el CSV': 0,
-    'fila de totales o vacía': 0,
-  }
+  const omitidos = nuevosOmitidos()
 
   for (let i = cabecera + 1; i < lineas.length; i++) {
     const campos = dividirCampos(lineas[i])
@@ -90,30 +151,100 @@ function leerClientes(lineas) {
       omitidos['fila de totales o vacía']++
       continue
     }
-    const resultado = clasificarCliente(campos)
-    if (resultado.motivo) {
-      omitidos[resultado.motivo]++
-      continue
-    }
-    if (vistos.has(resultado.cliente.numeroCliente)) {
-      omitidos['duplicado en el CSV']++
-      continue
-    }
-    vistos.add(resultado.cliente.numeroCliente)
-    clientes.push(resultado.cliente)
+    acumularCliente(
+      clienteDeCampos({
+        numeroCliente: campos[0],
+        nombre: campos[1],
+        direccion: textoONull(campos[2]),
+        codigoPostal: textoONull(campos[3]),
+        poblacion: textoONull(campos[4]),
+        provincia: textoONull(campos[5]),
+        telefono: textoONull(campos[6]),
+        dni: textoONull(campos[7]),
+      }),
+      vistos,
+      clientes,
+      omitidos,
+    )
   }
   return { clientes, omitidos }
 }
 
-// Devuelve los datos a escribir en un update de cliente (sin la clave única).
-function datosCliente(cliente) {
-  const { numeroCliente, ...resto } = cliente
-  return resto
+// Lee y clasifica las filas del Excel de clientes. Las columnas se localizan por el
+// nombre de su cabecera, así que el orden o las columnas de más no importan.
+function leerClientesExcel(contenido) {
+  let filas
+  try {
+    const libro = XLSX.read(Buffer.from(contenido, 'base64'), { type: 'buffer' })
+    filas = XLSX.utils.sheet_to_json(libro.Sheets[libro.SheetNames[0]], { header: 1, raw: true, defval: null })
+  } catch {
+    throw new Error('El fichero no es un Excel válido')
+  }
+
+  const filaCabecera = filas.findIndex((fila) => {
+    const claves = fila.map(claveCabecera)
+    return claves.includes('nombre fiscal') || (claves.includes('código') && claves.includes('nombre'))
+  })
+  if (filaCabecera === -1) {
+    throw new Error('No se encontró la fila de cabeceras (Código, Nombre fiscal…) en el Excel de clientes.')
+  }
+
+  // Posición de cada campo según la cabecera (por nombre exacto o alias).
+  const columna = {}
+  filas[filaCabecera].forEach((celda, posicion) => {
+    const clave = claveCabecera(celda)
+    const definicion = COLUMNAS_CLIENTES.find(
+      (col) => claveCabecera(col.cabecera) === clave || col.alias.includes(clave),
+    )
+    if (definicion && columna[definicion.campo] === undefined) columna[definicion.campo] = posicion
+  })
+  if (columna.numeroCliente === undefined || columna.nombre === undefined) {
+    throw new Error('Faltan las columnas Código y Nombre fiscal en el Excel de clientes.')
+  }
+
+  const vistos = new Set()
+  const clientes = []
+  const omitidos = nuevosOmitidos()
+  const celda = (fila, campo) => (columna[campo] === undefined ? null : fila[columna[campo]])
+
+  for (const fila of filas.slice(filaCabecera + 1)) {
+    if (fila.every((valor) => textoCelda(valor) === null) || fila.some((valor) => valor === 'Totales:')) {
+      omitidos['fila de totales o vacía']++
+      continue
+    }
+    acumularCliente(
+      clienteDeCampos({
+        numeroCliente: textoCelda(celda(fila, 'numeroCliente')),
+        nombre: textoCelda(celda(fila, 'nombre')),
+        dni: textoCelda(celda(fila, 'dni')),
+        telefono: textoCelda(celda(fila, 'telefono')),
+        email: textoCelda(celda(fila, 'email')),
+        direccion: textoCelda(celda(fila, 'direccion')),
+        codigoPostal: codigoPostalCelda(celda(fila, 'codigoPostal')),
+        poblacion: textoCelda(celda(fila, 'poblacion')),
+        provincia: textoCelda(celda(fila, 'provincia')),
+        pais: textoCelda(celda(fila, 'pais')),
+      }),
+      vistos,
+      clientes,
+      omitidos,
+    )
+  }
+  return { clientes, omitidos }
 }
 
-export async function importarClientes(prisma, texto, { simular = false } = {}) {
-  validarTexto(texto)
-  const { clientes, omitidos } = leerClientes(leerLineasCsvTexto(texto))
+// Datos a escribir al actualizar un cliente existente: el nombre y los campos que el
+// fichero trae con valor. Un campo vacío del fichero no borra el dato ya guardado.
+function datosCliente(cliente) {
+  const { numeroCliente, ...resto } = cliente
+  return Object.fromEntries(Object.entries(resto).filter(([campo, valor]) => campo === 'nombre' || valor != null))
+}
+
+export async function importarClientes(prisma, contenido, { simular = false } = {}) {
+  validarTexto(contenido)
+  const formato = esExcelBase64(contenido) ? 'xlsx' : 'csv'
+  const { clientes, omitidos } =
+    formato === 'xlsx' ? leerClientesExcel(contenido) : leerClientesCsv(leerLineasCsvTexto(contenido))
 
   // Consulta previa única de las claves existentes (para contar y para el dry-run).
   const existentes = new Set()
@@ -150,6 +281,7 @@ export async function importarClientes(prisma, texto, { simular = false } = {}) 
 
   return {
     tipo: 'clientes',
+    formato,
     leidos: clientes.length,
     creados,
     actualizados,
@@ -621,3 +753,15 @@ export const IMPORTACIONES = {
   trabajos: importarTrabajos,
 }
 
+
+// Plantilla .xlsx vacía del listado de clientes: mismas cabeceras que el informe del
+// ERP, más una fila de ejemplo que hay que borrar antes de importar.
+export function plantillaClientesXlsx() {
+  const cabeceras = COLUMNAS_CLIENTES.map((col) => col.cabecera)
+  const ejemplo = [9999, 'Nombre y apellidos de ejemplo', '12345678Z', '600 00 00 00', 'correo@ejemplo.es', 'C/ Mayor, 1', '43500', 'Tortosa', 'TARRAGONA', 'ESPAÑA']
+  const hoja = XLSX.utils.aoa_to_sheet([cabeceras, ejemplo])
+  hoja['!cols'] = cabeceras.map((c) => ({ wch: Math.max(c.length + 4, 16) }))
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja, 'Clientes')
+  return XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' })
+}

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import prisma from '../db.js'
 import { authMiddleware, roleMiddleware } from './auth.js'
-import { IMPORTACIONES } from '../lib/importar.js'
+import { IMPORTACIONES, plantillaClientesXlsx } from '../lib/importar.js'
 import { validarCuerpo } from '../lib/importarCuerpo.js'
 import { crearBackup } from './backups.js'
 
@@ -19,6 +19,13 @@ let importando = false
 function esErrorDelFichero(error) {
   return error instanceof Error && error.name === 'Error'
 }
+
+// GET /plantilla/clientes -> plantilla .xlsx para importar clientes.
+router.get('/plantilla/clientes', (req, res) => {
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.setHeader('Content-Disposition', 'attachment; filename="plantilla-clientes.xlsx"')
+  res.send(plantillaClientesXlsx())
+})
 
 // POST /:tipo { contenido, simular } -> simula (simular:true) o importa un listado CSV.
 router.post('/:tipo', async (req, res, next) => {

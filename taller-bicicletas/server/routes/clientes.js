@@ -19,6 +19,7 @@ const CAMPOS_TEXTO_OPCIONALES = [
   'provincia',
   'telefono',
   'email',
+  'pais',
 ]
 
 // Convierte un parámetro en un identificador entero positivo o devuelve null

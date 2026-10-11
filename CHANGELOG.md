@@ -6,6 +6,19 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.19.0] - 2026-10-11
+
+### Añadido
+
+- Importación de clientes desde el Excel «Listado de clientes personalizado» (.xlsx: Código, Nombre fiscal, N.I.F., Móvil, E-mail, Domicilio, Cód. Postal, Población, Provincia, País). Las columnas se localizan por su cabecera. El CSV antiguo sigue funcionando.
+- Botón «Descargar plantilla Excel» en Configuración > Importar y ruta `GET /api/importar/plantilla/clientes`.
+- Campo `pais` en el cliente (formulario, ficha y API). Requiere `prisma db push` (lo hace `update.sh`).
+
+### Cambiado
+
+- Al reimportar clientes no se duplica nada: se emparejan por código y solo se sobrescriben los campos que el fichero trae con valor; un campo vacío del fichero no borra el dato ya guardado.
+- El motivo de omisión «duplicado en el CSV» de los clientes pasa a «duplicado en el fichero».
+
 ## [1.18.1] - 2026-10-10
 
 ### Cambiado
