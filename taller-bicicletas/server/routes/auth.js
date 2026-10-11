@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import prisma from '../db.js'
 import { obtenerAjustes } from './ajustes.js'
 import { crearLimitadorLogin } from '../lib/seguridad.js'
+import { elegirUsuarioAutomatico } from '../lib/accesoAutomatico.js'
 
 const router = Router()
 
@@ -21,6 +22,19 @@ const publicUser = ({ id, username, nombre, rol, activo, pinHash }) => ({
   activo,
   tienePin: Boolean(pinHash),
 })
+
+async function emitirSesion(user) {
+  const { sesionHoras } = await obtenerAjustes()
+  const token = jwt.sign(
+    { sub: String(user.id), username: user.username, rol: user.rol },
+    tokenSecret,
+    { expiresIn: `${sesionHoras}h` },
+  )
+  const { exp } = jwt.decode(token)
+  const expiraEn = new Date(exp * 1000).toISOString()
+
+  return { token, expiraEn, user: publicUser(user) }
+}
 
 router.post('/login', limitadorLogin, async (req, res, next) => {
   try {
@@ -45,16 +59,35 @@ router.post('/login', limitadorLogin, async (req, res, next) => {
     }
 
     // La duración del token depende del ajuste sesionHoras (por defecto 8).
-    const { sesionHoras } = await obtenerAjustes()
-    const token = jwt.sign(
-      { sub: String(user.id), username: user.username, rol: user.rol },
-      tokenSecret,
-      { expiresIn: `${sesionHoras}h` },
-    )
-    const { exp } = jwt.decode(token)
-    const expiraEn = new Date(exp * 1000).toISOString()
+    return res.json(await emitirSesion(user))
+  } catch (error) {
+    return next(error)
+  }
+})
 
-    return res.json({ token, expiraEn, user: publicUser(user) })
+router.get('/acceso', async (req, res, next) => {
+  try {
+    const { inicioSesionDesactivado } = await obtenerAjustes()
+    return res.json({ inicioSesionDesactivado })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+router.post('/automatico', async (req, res, next) => {
+  try {
+    const { inicioSesionDesactivado } = await obtenerAjustes()
+    if (!inicioSesionDesactivado) {
+      return res.status(403).json({ error: 'El acceso sin inicio de sesión no está activado' })
+    }
+
+    const usuarios = await prisma.usuario.findMany()
+    const usuario = elegirUsuarioAutomatico(usuarios)
+    if (!usuario) {
+      return res.status(409).json({ error: 'No hay ningún administrador activo para el acceso automático' })
+    }
+
+    return res.json(await emitirSesion(usuario))
   } catch (error) {
     return next(error)
   }

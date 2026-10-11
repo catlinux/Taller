@@ -28,6 +28,7 @@ export const AJUSTES_DEFECTO = {
   bloqueoInactividadMinutos: 0,
   actualizacionesActivas: true,
   actualizacionesHoras: 6,
+  inicioSesionDesactivado: false,
 }
 
 // Reglas de validación por clave. tipo: 'opcion' (lista de valores permitidos),
@@ -49,6 +50,7 @@ const VALIDADORES = {
   bloqueoInactividadMinutos: { tipo: 'numero', min: 0, max: 240 },
   actualizacionesActivas: { tipo: 'booleano' },
   actualizacionesHoras: { tipo: 'numero', min: 1, max: 168 },
+  inicioSesionDesactivado: { tipo: 'booleano' },
 }
 
 // Valida un valor concreto para una clave conocida. Devuelve { valor } con el
