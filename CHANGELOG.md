@@ -6,6 +6,12 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.20.2] - 2026-10-11
+
+### Cambiado
+
+- Órdenes: el listado ya no muestra las columnas «Nº orden» y «Mecánico» y se ordena por fecha de entrada (la más reciente primero). Las exportaciones a Excel, CSV y PDF las siguen incluyendo.
+
 ## [1.20.1] - 2026-10-11
 
 ### Cambiado

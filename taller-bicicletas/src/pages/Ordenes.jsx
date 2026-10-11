@@ -76,15 +76,6 @@ export default function Ordenes() {
 
   const columnas = [
     {
-      clave: 'numeroOrden', titulo: 'Nº orden', ancho: '130px', valor: (o) => o.numeroOrden,
-      // Si no cabe, se recorta por delante (…-0005) para que se vea la numeración, que es lo que distingue una orden de otra.
-      render: (o) => (
-        <span className="block truncate whitespace-nowrap font-medium text-white" style={{ direction: 'rtl', textAlign: 'left' }} title={o.numeroOrden}>
-          <bdi dir="ltr">{o.numeroOrden}</bdi>
-        </span>
-      ),
-    },
-    {
       clave: 'fechaEntrada', titulo: 'Entrada', ancho: '110px', tipo: 'fecha',
       valor: (o) => o.fechaEntrada,
       render: (o) => <span className="block whitespace-nowrap text-slate-400">{formatearFecha(o.fechaEntrada)}</span>,
@@ -119,10 +110,6 @@ export default function Ordenes() {
         const destacado = o.tipoReparacion === 'Urgente' || o.tipoReparacion === 'Preferente'
         return <span className={`badge whitespace-nowrap ${destacado ? 'bg-naranja-500/10 text-naranja-300' : 'bg-antracita-700 text-slate-300'}`}>{etiquetaTipoCorta(o.tipoReparacion)}</span>
       },
-    },
-    {
-      clave: 'mecanico', titulo: 'Mecánico', ancho: '125px', valor: (o) => o.mecanico?.nombre,
-      render: (o) => <span className="block whitespace-nowrap text-slate-400" title={o.mecanico?.nombre || ''}>{o.mecanico?.nombre || '—'}</span>,
     },
     {
       clave: 'estado', titulo: 'Estado', ancho: '150px', tipo: 'numero',
@@ -256,7 +243,7 @@ export default function Ordenes() {
         columnas={columnas}
         filas={ordenes}
         claveFila={(o) => o.id}
-        ordenInicial={{ clave: 'numeroOrden', dir: 'desc' }}
+        ordenInicial={{ clave: 'fechaEntrada', dir: 'desc' }}
         onFila={(o) => navigate(`/ordenes/${o.id}`)}
         cargando={isLoading}
         etiquetaPlural="órdenes"
