@@ -6,6 +6,12 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.20.4] - 2026-10-11
+
+### Cambiado
+
+- Artículos: la tabla ya no muestra la columna IVA, para que Stock se vea entera (la exportación a Excel la conserva).
+
 ## [1.20.3] - 2026-10-11
 
 ### Cambiado

@@ -149,11 +149,6 @@ export default function Articulos() {
       render: (a) => <span className="block truncate text-slate-400">{Number(a.precioVenta).toFixed(2)} €</span>,
     },
     {
-      clave: 'iva', titulo: 'IVA', title: 'Tipo de IVA aplicado (%)', ancho: '70px', tipo: 'numero', alinear: 'der',
-      valor: (a) => a.iva,
-      render: (a) => <span className="block truncate text-slate-400">{a.iva} %</span>,
-    },
-    {
       clave: 'stock', titulo: 'Stock', title: 'Unidades disponibles en almacén', ancho: '80px', tipo: 'numero', alinear: 'der',
       valor: (a) => a.stock,
       render: (a) => <span className={`block truncate ${a.stock <= 5 ? 'font-semibold text-naranja-400' : 'text-slate-400'}`}>{a.stock}</span>,
