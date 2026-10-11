@@ -6,6 +6,12 @@ Versiones anteriores: ver el historial de git.
 
 ## [Sin publicar]
 
+## [1.20.1] - 2026-10-11
+
+### Cambiado
+
+- La barra lateral del menú pasa de 248 px a 201 px de ancho (un 19 % más estrecha); la barra inferior fija de la orden se ajusta al nuevo ancho.
+
 ## [1.20.0] - 2026-10-11
 
 ### Añadido

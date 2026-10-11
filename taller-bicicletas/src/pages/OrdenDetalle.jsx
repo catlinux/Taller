@@ -486,7 +486,7 @@ export default function OrdenDetalle() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 md:left-[248px] border-t border-antracita-700 bg-antracita-900/95 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-30 md:left-[201px] border-t border-antracita-700 bg-antracita-900/95 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <button type="button" onClick={volver} className="rounded-lg border border-antracita-600 px-4 py-2.5 text-sm text-slate-300 hover:bg-antracita-700">Volver al listado</button>
           <div className="flex flex-wrap items-center gap-2">
